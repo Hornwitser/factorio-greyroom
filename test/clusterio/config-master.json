@@ -1,0 +1,23 @@
+{
+    "groups": [
+        {
+            "name": "master",
+            "fields": {
+                "name": "Test Cluster",
+                "database_directory": "database",
+                "http_port": 18729,
+                "https_port": null,
+                "bind_address": null,
+                "external_address": null,
+                "tls_certificate": null,
+                "tls_private_key": null,
+                "auth_secret": "liqyizyNNCiAgUC86DpbQhzECWmaHyG3I2cPXttnWQoFHW4DrsCT332HErgOXLWGVYNgIrxSc6TApDinz7hU1VeOZuWY8QTxk2VZ6WMPZrDqLZTrdUGAcBkAd1X8/wwpItFRHgOwWEwvZJrlE2vbN7Od3ygEtcsutuh/O76qaPN+ocxio+flUid3k77bMhzJ9TJ/4V/KMjUdaiySj1L8IOJAFQLIHVfmiifrxcPHY2RwtE0KYkxrKoN8Yy3ePUbvkhWDR/jFvW2Bry/RhBAQC/aRbSXbPlW5NghIe/Xw78qoCH8B2sAeCOJoQ+A7oJPMzmCUs466RoibkhELugvHVA==",
+                "heartbeat_interval": 15,
+                "connector_shutdown_timeout": 10,
+                "metrics_timeout": 8,
+                "proxy_stream_timeout": 15,
+                "default_role_id": 1
+            }
+        }
+    ]
+}

@@ -1,0 +1,43 @@
+{
+    "users": [
+        {
+            "name": "test",
+            "roles": [
+                1,
+                0
+            ],
+            "is_admin": true
+        },
+        {
+            "name": "ConnectToServer",
+            "roles": [
+                1
+            ]
+        }
+    ],
+    "roles": [
+        {
+            "id": 0,
+            "name": "Cluster Admin",
+            "description": "Cluster wide administrator.",
+            "permissions": [
+                "core.admin"
+            ]
+        },
+        {
+            "id": 1,
+            "name": "Player",
+            "description": "Default player role.",
+            "permissions": [
+                "core.control.connect",
+                "core.slave.list",
+                "core.slave.subscribe",
+                "core.instance.get",
+                "core.instance.list",
+                "core.instance.subscribe",
+                "core.permission.list",
+                "core.role.list"
+            ]
+        }
+    ]
+}

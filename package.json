@@ -1,0 +1,33 @@
+{
+  "name": "@hornwitser/factorio-greyroom",
+  "version": "0.0.1",
+  "description": "Reimplementation of Factorio data structures with a focus on the protocol.",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Hornwitser/factorio-greyroom.git"
+  },
+  "keywords": [
+    "factorio",
+    "client"
+  ],
+  "author": "Hornwitser",
+  "license": "UNLICENSED",
+  "bugs": {
+    "url": "https://github.com/Hornwitser/factorio-greyroom/issues"
+  },
+  "homepage": "https://github.com/Hornwitser/factorio-greyroom#readme",
+  "devDependencies": {
+    "@clusterio/master": "*",
+    "@clusterio/slave": "*",
+    "@types/jest": "^27.0.1",
+    "@types/node": "^16.7.1",
+    "jest": "^27.0.6",
+    "ts-jest": "^27.0.5",
+    "ts-node": "^10.2.1",
+    "typescript": "^4.3.5"
+  }
+}
