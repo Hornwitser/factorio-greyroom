@@ -64,11 +64,16 @@ function spawn(cmd: string, waitFor: RegExp): Promise<child_process.ChildProcess
 }
 
 declare namespace global {
-	var masterProcess: child_process.ChildProcess;
-	var slaveProcess: child_process.ChildProcess;
+	var masterProcess: child_process.ChildProcess | undefined;
+	var slaveProcess: child_process.ChildProcess | undefined;
 }
 
 export default async function setup() {
 	global.masterProcess = await spawn("../../node_modules/.bin/clusteriomaster run", /Started master/);
 	global.slaveProcess = await spawn("../../node_modules/.bin/clusterioslave run", /SOCKET \| registering slave/);
 }
+
+process.on("exit", () => {
+	if (global.slaveProcess) { global.slaveProcess.kill(); }
+	if (global.masterProcess) { global.masterProcess.kill(); }
+});
