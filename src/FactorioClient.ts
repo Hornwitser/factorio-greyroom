@@ -224,17 +224,22 @@ class FactorioClient extends events.EventEmitter {
 							break;
 
 						case SynchronizerActionType.PeerDisconnect:
+						case SynchronizerActionType.NewPeerInfo:
 						case SynchronizerActionType.MapSavingProgressUpdate:
+						case SynchronizerActionType.SavingForUpdate:
 							break; // Ignore
 
 						default:
-							console.log("Unandled sync", SynchronizerActionType[synchronizerAction.type]);
-					}
+							const actionName = SynchronizerActionType[synchronizerAction.type];
+							this.emit("error", new Error(
+								`Unhandled synchronizer action ${actionName} (${synchronizerAction.type})`
+							));
+						}
 				}
 				break;
 
 			default:
-				console.log("Unhandled message", NetworkMessageType[message.type]);
+				this.emit("error", new Error(`Unhandled message ${NetworkMessageType[message.type]}`));
 		}
 	}
 
