@@ -46,6 +46,8 @@ declare interface FactorioClient {
 }
 
 class FactorioClient extends events.EventEmitter {
+	public version = new Version(0, 0, 0, 0);
+
 	clientRequestID?: number;
 	connection = new UdpClient();
 	heartbeatInterval?: NodeJS.Timer;
@@ -107,7 +109,7 @@ class FactorioClient extends events.EventEmitter {
 		await this.connection.connect(address, port);
 		this.changeState(ClientMultiplayerStateType.Connecting);
 		this.clientRequestID = Math.round(Math.random() * 2 ** 32);
-		const request = new ConnectionRequest(new Version(1, 1, 38, 0), this.clientRequestID);
+		const request = new ConnectionRequest(this.version, this.clientRequestID);
 		this.connection.send(request);
 		await events.once(this, "join_game");
 	}
