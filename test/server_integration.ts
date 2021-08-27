@@ -5,6 +5,8 @@ import * as libConfig from "@clusterio/lib/config";
 import { ConsoleTransport, logger } from "@clusterio/lib/logging";
 import * as libLoggingUtils from "@clusterio/lib/logging_utils";
 
+import { ModID, ModVersion } from "../src";
+
 
 logger.add(new ConsoleTransport({
 	level: "info",
@@ -52,6 +54,8 @@ export class ServerInterface {
 	instanceId = 0;
 	gamePort = 0;
 	coreChecksum = 0;
+	baseChecksum = 0;
+	baseVersion = new ModVersion(0, 0, 0);
 	prototypeListChecksum = 0;
 	status = "unknown";
 	constructor(
@@ -68,12 +72,26 @@ export class ServerInterface {
 					this.coreChecksum = Number(match[1]);
 				}
 
+				match = /Checksum of base: (\d+)/.exec(info.parsed.message);
+				if (match) {
+					this.baseChecksum = Number(match[1]);
+				}
+
+				match = /Loading mod base (\d+)\.(\d+)\.(\d+)/.exec(info.parsed.message);
+				if (match) {
+					this.baseVersion = new ModVersion(Number(match[1]), Number(match[2]), Number(match[3]));
+				}
+
 				match = /Prototype list checksum: (\d+)/.exec(info.parsed.message);
 				if (match) {
 					this.prototypeListChecksum = Number(match[1]);
 				}
 			}
 		});
+	}
+
+	get activeMods() {
+		return [new ModID("base", this.baseVersion, this.baseChecksum)];
 	}
 
 	async setupServer() {

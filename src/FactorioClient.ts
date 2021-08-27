@@ -18,18 +18,28 @@ import {
 	NetworkMessageType,
 	NetworkMessage,
 	ConnectionRequest,
+	ConnectionRequestReply,
 	ConnectionRequestReplyConfirm,
+	ConnectionAcceptOrDeny,
 	ConnectionRequestStatus,
 	ClientToServerHeartbeat,
+	ServerToClientHeartbeat,
 	TickClosure,
 	Heartbeat,
 } from "./network_message";
+import { ConnectingFailed } from "./errors";
 
 
 declare interface FactorioClient {
+	on(event: "connection_request_reply", listener: (message: ConnectionRequestReply) => void): this,
+	on(event: "connection_accept_or_deny", listener: (message: ConnectionAcceptOrDeny) => void): this,
+	on(event: "server_to_client_heartbeat", listener: (message: ServerToClientHeartbeat) => void): this,
 	on(event: "join_game", listener: (data: { playerIndex: number }) => void): this,
 	on(event: "error", listener: (err: Error) => void): this,
 	on(event: "send_heartbeat", listener: () => void): this,
+	emit(event: "connection_request_reply", message: ConnectionRequestReply): boolean,
+	emit(event: "connection_accept_or_deny", message: ConnectionAcceptOrDeny): boolean,
+	emit(event: "server_to_client_heartbeat", message: ServerToClientHeartbeat): boolean,
 	emit(event: "join_game", data: { playerIndex: number }): boolean,
 	emit(event: "error", err: Error): boolean,
 	emit(event: "send_heartbeat"): boolean,
@@ -37,7 +47,6 @@ declare interface FactorioClient {
 
 class FactorioClient extends events.EventEmitter {
 	clientRequestID?: number;
-	activeMods: ModID[] = [];
 	connection = new UdpClient();
 	heartbeatInterval?: NodeJS.Timer;
 	clientSequence = 0;
@@ -49,13 +58,35 @@ class FactorioClient extends events.EventEmitter {
 	latency = 0;
 	playerIndex: number | null = null;
 	peerID: number | null = null;
-	started = Date.now();
+	state = ClientMultiplayerStateType.Ready;
+	connected = false;
 
+	reset() {
+		delete this.clientRequestID;
+		this.connection.reset();
+		if (this.heartbeatInterval) {
+			clearInterval(this.heartbeatInterval);
+			delete this.heartbeatInterval;
+		}
+		this.clientSequence = 0;
+		this.serverSequence = 0;
+		this.synchronizerActionsToSend = [];
+		this.inputActionsToSend = [];
+		this.nextToReceiveServerTickClosure = 2 ** 32 - 1;
+		this.currentTickClosure = null;
+		this.latency = 0;
+		this.playerIndex = null;
+		this.peerID = null;
+		this.state = ClientMultiplayerStateType.Ready;
+		this.connected = false;
+	}
 
 	constructor(
 		public playerName: string,
 		public coreChecksum: number,
 		public prototypeListChecksum: number,
+		public activeMods: ModID[],
+		public password: string = "",
 	) {
 		super();
 		this.connection.on("message", this.handleMessage.bind(this));
@@ -65,11 +96,20 @@ class FactorioClient extends events.EventEmitter {
 		});
 	}
 
+	changeState(newState: ClientMultiplayerStateType) {
+		if (this.connected) {
+			this.synchronizerActionsToSend.push(new ClientChangedState(newState));
+		}
+		this.state = newState;
+	}
+
 	async connect(address: string, port: number) {
 		await this.connection.connect(address, port);
+		this.changeState(ClientMultiplayerStateType.Connecting);
 		this.clientRequestID = Math.round(Math.random() * 2 ** 32);
 		const request = new ConnectionRequest(new Version(1, 1, 38, 0), this.clientRequestID);
 		this.connection.send(request);
+		await events.once(this, "join_game");
 	}
 
 	/**
@@ -85,34 +125,19 @@ class FactorioClient extends events.EventEmitter {
 		this.reset();
 	}
 
-	reset() {
-		delete this.clientRequestID;
-		this.activeMods = [];
-		this.connection.reset();
-		if (this.heartbeatInterval) {
-			clearInterval(this.heartbeatInterval);
-			delete this.heartbeatInterval;
-		}
-		this.clientSequence = 0;
-		this.serverSequence = 0;
-		this.synchronizerActionsToSend = [];
-		this.inputActionsToSend = [];
-		this.nextToReceiveServerTickClosure = 2 ** 32 - 1;
-		this.currentTickClosure = null;
-		this.latency = 0;
-		this.playerIndex = null;
-		this.peerID = null;
-	}
-
 	handleMessage(message: NetworkMessage) {
 		switch (message.type) {
 			case NetworkMessageType.ConnectionRequestReply:
+				this.emit("connection_request_reply", message);
+				if (this.state !== ClientMultiplayerStateType.Connecting) {
+					break;
+				}
 				const confirm = new ConnectionRequestReplyConfirm(
 					this.clientRequestID!,
 					message.connectionRequestIDGeneratedOnServer,
 					0,
 					this.playerName,
-					"",
+					this.password,
 					"",
 					"",
 					this.coreChecksum,
@@ -124,26 +149,34 @@ class FactorioClient extends events.EventEmitter {
 				break;
 
 			case NetworkMessageType.ConnectionAcceptOrDeny:
-				console.log("Connection status:", ConnectionRequestStatus[message.status]);
-				if (message.status === ConnectionRequestStatus.ModsMissmatch && !this.activeMods.length) {
-					console.log("Retrying with mods from server");
-					this.activeMods = message.activeMods;
-					this.clientRequestID = Math.round(Math.random() * 2 ** 32);
-					const request = new ConnectionRequest(new Version(1, 1, 38, 0), this.clientRequestID);
-					this.connection.send(request);
-
-				} else if (message.status === ConnectionRequestStatus.Valid && !this.heartbeatInterval) {
-					// We have a connection, start sending heartbeats.
-
-					this.latency = message.latency;
-					this.peerID = message.newPeerID;
-					this.clientSequence = message.firstSequenceNumberToSend;
-					this.serverSequence = message.firstSequenceNumberToExpect;
-					this.heartbeatInterval = setInterval(() => this.sendHeartbeat(), 1000 / 30);
+				this.emit("connection_accept_or_deny", message);
+				if (this.state !== ClientMultiplayerStateType.Connecting) {
+					break;
 				}
+				if (message.status !== ConnectionRequestStatus.Valid) {
+					this.emit("error", new ConnectingFailed(
+						`Server refused connection: ${ConnectionRequestStatus[message.status]} (${message.status})`,
+						message.status,
+					));
+				}
+
+				// We have a connection, start sending heartbeats.
+				this.connected = true;
+				this.latency = message.latency;
+				this.peerID = message.newPeerID;
+				this.clientSequence = message.firstSequenceNumberToSend;
+				this.serverSequence = message.firstSequenceNumberToExpect;
+				this.heartbeatInterval = setInterval(() => {
+					try {
+						this.sendHeartbeat();
+					} catch (err) {
+						this.emit("error", err);
+					}
+				}, 1000 / 30);
 				break;
 
 			case NetworkMessageType.ServerToClientHeartbeat:
+				this.emit("server_to_client_heartbeat", message);
 				for (let tickClosure of message.heartbeat.tickClosures) {
 					this.nextToReceiveServerTickClosure = tickClosure.updateTick + 1;
 					for (let inputAction of tickClosure.inputActions) {
@@ -221,7 +254,6 @@ class FactorioClient extends events.EventEmitter {
 				this.inputActionsToSend = [];
 			}
 		}
-
 
 		const heartbeat = new Heartbeat(
 			this.clientSequence++,

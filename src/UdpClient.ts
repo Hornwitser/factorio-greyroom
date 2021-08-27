@@ -65,6 +65,7 @@ class UdpClient extends events.EventEmitter {
 	constructor() {
 		super();
 		this.socket = dgram.createSocket("udp4", this.handleFrame.bind(this));
+		this.socket.on("error", err => { this.emit("error", err); });
 	}
 
 	async connect(address: string, port: number) {

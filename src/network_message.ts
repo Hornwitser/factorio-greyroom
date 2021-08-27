@@ -225,8 +225,8 @@ export class ClientsPeerInfo {
 
 export enum ConnectionRequestStatus {
 	Valid,
-	ModsMissmatch,
-	CoreModMissmatch,
+	ModsMismatch,
+	CoreModMismatch,
 	ModStartupSettingsMismatch,
 	PrototypeChecksumMismatch,
 	PlayerLimitReached,
