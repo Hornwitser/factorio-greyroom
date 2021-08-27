@@ -1,42 +1,14 @@
 import dgram from "dgram";
 import events from "events";
 import util from "util";
-import { DecodeError, ReadableStream, WritableStream, Readable } from "./stream";
+import { DecodeError, ReadableStream, WritableStream } from "./stream";
 import {
 	NetworkMessageType,
 	NetworkMessage,
-	ConnectionRequest,
-	ConnectionRequestReply,
-	ConnectionRequestReplyConfirm,
-	ConnectionAcceptOrDeny,
-	ClientToServerHeartbeat,
-	ServerToClientHeartbeat,
-	Empty,
+	NetworkMessageTypeToClass,
 } from "./network_message";
 import NetworkFrame from "./NetworkFrame";
 
-
-const NetworkMessageClass = new Map<NetworkMessageType, Readable>([
-	// [NetworkMessageType.Ping, ...],
-	// [NetworkMessageType.PingReply, ...],
-	[NetworkMessageType.ConnectionRequest, ConnectionRequest],
-	[NetworkMessageType.ConnectionRequestReply, ConnectionRequestReply],
-	[NetworkMessageType.ConnectionRequestReplyConfirm, ConnectionRequestReplyConfirm],
-	[NetworkMessageType.ConnectionAcceptOrDeny, ConnectionAcceptOrDeny],
-	[NetworkMessageType.ClientToServerHeartbeat, ClientToServerHeartbeat],
-	[NetworkMessageType.ServerToClientHeartbeat, ServerToClientHeartbeat],
-	// [NetworkMessageType.GetOwnAddress, ...],
-	// [NetworkMessageType.GetOwnAddressReply, ...],
-	// [NetworkMessageType.NatPunchRequest, ...],
-	// [NetworkMessageType.NatPunch, ...],
-	// [NetworkMessageType.TransferBlockRequest, ...],
-	// [NetworkMessageType.TransferBlock, ...],
-	// [NetworkMessageType.RequestForHeartbeatWhenDisconnecting, ...],
-	// [NetworkMessageType.LANBroadcast, ...],
-	// [NetworkMessageType.GameInformationRequest, ...],
-	// [NetworkMessageType.GameInformationRequestReply, ...],
-	[NetworkMessageType.Empty, Empty],
-]);
 
 interface FragmentData {
 	fragments: Buffer[],
@@ -46,15 +18,15 @@ interface FragmentData {
 }
 
 declare interface UdpClient {
-	on(event: "send_message", listener: (message: NetworkMessage) => void): this,
-	on(event: "send_frame", listener: (frame: NetworkFrame) => void): this,
-	on(event: "message", listener: (message: NetworkMessage) => void): this,
-	on(event: "frame", listener: (frame: NetworkFrame) => void): this,
+	on(event: "send_message", listener: (message: NetworkMessage, data: Buffer) => void): this,
+	on(event: "send_frame", listener: (frame: NetworkFrame, data: Buffer) => void): this,
+	on(event: "message", listener: (message: NetworkMessage, data: Buffer) => void): this,
+	on(event: "frame", listener: (frame: NetworkFrame, data: Buffer) => void): this,
 	on(event: "error", listener: (err: Error) => void): this,
-	emit(event: "send_message", message: NetworkMessage): boolean,
-	emit(event: "send_frame", frame: NetworkFrame): boolean,
-	emit(event: "message", message: NetworkMessage): boolean,
-	emit(event: "frame", frame: NetworkFrame): boolean,
+	emit(event: "send_message", message: NetworkMessage, data: Buffer): boolean,
+	emit(event: "send_frame", frame: NetworkFrame, data: Buffer): boolean,
+	emit(event: "message", message: NetworkMessage, data: Buffer): boolean,
+	emit(event: "frame", frame: NetworkFrame, data: Buffer): boolean,
 	emit(event: "error", err: Error): boolean,
 }
 
@@ -79,16 +51,17 @@ class UdpClient extends events.EventEmitter {
 	}
 
 	send(message: NetworkMessage) {
-		this.emit("send_message", message);
 		const messageStream = new WritableStream();
 		message.write(messageStream);
 		const payload = messageStream.data();
+		this.emit("send_message", message, payload);
 
 		const frameStream = new WritableStream();
 		const frame = new NetworkFrame(message.type, payload);
-		this.emit("send_frame", frame);
 		frame.write(frameStream);
-		this.socket.send(frameStream.data());
+		const frameData = frameStream.data();
+		this.emit("send_frame", frame, frameData);
+		this.socket.send(frameData);
 	}
 
 	handleFrame(data: Buffer, rinfo: dgram.RemoteInfo) {
@@ -109,7 +82,7 @@ class UdpClient extends events.EventEmitter {
 			this.emit("error", err);
 			return;
 		}
-		this.emit("frame", frame);
+		this.emit("frame", frame, data);
 
 		if (!frame.fragmented) {
 			this.decodeMessage(frame.messageType, frame.messageData);
@@ -147,7 +120,7 @@ class UdpClient extends events.EventEmitter {
 	}
 
 	decodeMessage(messageType: NetworkMessageType, messageData: Buffer) {
-		if (!NetworkMessageClass.has(messageType)) {
+		if (!NetworkMessageTypeToClass.has(messageType)) {
 			this.emit("error", new DecodeError(
 				`Undecoded message type: ${NetworkMessageType[messageType]} (${messageType})`,
 				{ messageData },
@@ -157,7 +130,7 @@ class UdpClient extends events.EventEmitter {
 		const messageStream = new ReadableStream(messageData);
 		let message;
 		try {
-			message = NetworkMessageClass.get(messageType)!.read(messageStream) as NetworkMessage;
+			message = NetworkMessageTypeToClass.get(messageType)!.read(messageStream) as NetworkMessage;
 		} catch (err) {
 			if (!(err instanceof DecodeError)) {
 				err = new DecodeError(
@@ -178,7 +151,7 @@ class UdpClient extends events.EventEmitter {
 			));
 			return;
 		}
-		this.emit("message", message);
+		this.emit("message", message, messageData);
 	}
 }
 

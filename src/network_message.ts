@@ -1,4 +1,4 @@
-import { ReadableStream, WritableStream } from "./stream";
+import { ReadableStream, Readable, WritableStream } from "./stream";
 import { InputAction, InputActionSegment } from "./input";
 import { Version, ModID, ModStartupSetting, SmallProgress, readSmallProgress, writeSmallProgress } from "./data";
 import { SynchronizerAction, readSynchronizerAction, writeSynchronizerAction } from "./synchronizer_action";
@@ -482,7 +482,7 @@ export class ClientToServerHeartbeat implements AbstractNetworkMessage {
 	) { }
 
 	static read(stream: ReadableStream) {
-		return new ServerToClientHeartbeat(Heartbeat.read(stream, false));
+		return new ClientToServerHeartbeat(Heartbeat.read(stream, false));
 	}
 
 	write(stream: WritableStream) {
@@ -529,3 +529,25 @@ export type NetworkMessage =
 	ServerToClientHeartbeat |
 	Empty
 ;
+
+export const NetworkMessageTypeToClass = new Map<NetworkMessageType, Readable>([
+	// [NetworkMessageType.Ping, ...],
+	// [NetworkMessageType.PingReply, ...],
+	[NetworkMessageType.ConnectionRequest, ConnectionRequest],
+	[NetworkMessageType.ConnectionRequestReply, ConnectionRequestReply],
+	[NetworkMessageType.ConnectionRequestReplyConfirm, ConnectionRequestReplyConfirm],
+	[NetworkMessageType.ConnectionAcceptOrDeny, ConnectionAcceptOrDeny],
+	[NetworkMessageType.ClientToServerHeartbeat, ClientToServerHeartbeat],
+	[NetworkMessageType.ServerToClientHeartbeat, ServerToClientHeartbeat],
+	// [NetworkMessageType.GetOwnAddress, ...],
+	// [NetworkMessageType.GetOwnAddressReply, ...],
+	// [NetworkMessageType.NatPunchRequest, ...],
+	// [NetworkMessageType.NatPunch, ...],
+	// [NetworkMessageType.TransferBlockRequest, ...],
+	// [NetworkMessageType.TransferBlock, ...],
+	// [NetworkMessageType.RequestForHeartbeatWhenDisconnecting, RequestForHeartbeatWhenDisconnecting],
+	// [NetworkMessageType.LANBroadcast, ...],
+	// [NetworkMessageType.GameInformationRequest, ...],
+	// [NetworkMessageType.GameInformationRequestReply, ...],
+	[NetworkMessageType.Empty, Empty],
+]);

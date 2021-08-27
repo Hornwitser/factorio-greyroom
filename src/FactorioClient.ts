@@ -202,20 +202,12 @@ class FactorioClient extends events.EventEmitter {
 							break;
 
 						case SynchronizerActionType.MapReadyForDownload:
-							this.synchronizerActionsToSend.push(
-								new ClientChangedState(
-									ClientMultiplayerStateType.ConnectedDownloadingMap,
-								),
-								new ClientChangedState(
-									ClientMultiplayerStateType.WaitingForCommandToStartSendingTickClosures,
-								),
-							);
+							this.changeState(ClientMultiplayerStateType.ConnectedDownloadingMap);
+							this.changeState(ClientMultiplayerStateType.WaitingForCommandToStartSendingTickClosures);
 							break;
 
 						case SynchronizerActionType.ClientShouldStartSendingTickClosures:
-							this.synchronizerActionsToSend.push(
-								new ClientChangedState(ClientMultiplayerStateType.InGame),
-							);
+							this.changeState(ClientMultiplayerStateType.InGame);
 							this.currentTickClosure = synchronizerAction.firstExpectedTickClosureTick;
 							break;
 
