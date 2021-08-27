@@ -28,10 +28,10 @@ import {
 
 declare interface FactorioClient {
 	on(event: "join_game", listener: (data: { playerIndex: number }) => void): this,
-	on(event: "error", listener: (error: Error) => void): this,
+	on(event: "error", listener: (err: Error) => void): this,
 	on(event: "send_heartbeat", listener: () => void): this,
 	emit(event: "join_game", data: { playerIndex: number }): boolean,
-	emit(event: "error", error: Error): boolean,
+	emit(event: "error", err: Error): boolean,
 	emit(event: "send_heartbeat"): boolean,
 }
 
@@ -59,9 +59,9 @@ class FactorioClient extends events.EventEmitter {
 	) {
 		super();
 		this.connection.on("message", this.handleMessage.bind(this));
-		this.connection.on("error", (error) => {
+		this.connection.on("error", (err) => {
 			this.abort();
-			this.emit("error", error);
+			this.emit("error", err);
 		});
 	}
 

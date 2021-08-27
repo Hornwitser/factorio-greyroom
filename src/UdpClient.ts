@@ -50,12 +50,12 @@ declare interface UdpClient {
 	on(event: "send_frame", listener: (frame: NetworkFrame) => void): this,
 	on(event: "message", listener: (message: NetworkMessage) => void): this,
 	on(event: "frame", listener: (frame: NetworkFrame) => void): this,
-	on(event: "error", listener: (error: Error) => void): this,
+	on(event: "error", listener: (err: Error) => void): this,
 	emit(event: "send_message", message: NetworkMessage): boolean,
 	emit(event: "send_frame", frame: NetworkFrame): boolean,
 	emit(event: "message", message: NetworkMessage): boolean,
 	emit(event: "frame", frame: NetworkFrame): boolean,
-	emit(event: "error", error: Error): boolean,
+	emit(event: "error", err: Error): boolean,
 }
 
 class UdpClient extends events.EventEmitter {
@@ -96,16 +96,16 @@ class UdpClient extends events.EventEmitter {
 		let frame;
 		try {
 			frame = NetworkFrame.read(frameStream);
-		} catch (error) {
-			if (!(error instanceof DecodeError)) {
-				error = new DecodeError(
-					`Unexpected error decoding frame: ${error.message}`,
-					{ error },
+		} catch (err) {
+			if (!(err instanceof DecodeError)) {
+				err = new DecodeError(
+					`Unexpected error decoding frame: ${err.message}`,
+					{ error: err },
 				);
 			}
-			error.frameStream = frameStream;
-			error.frameData = data;
-			this.emit("error", error);
+			err.frameStream = frameStream;
+			err.frameData = data;
+			this.emit("error", err);
 			return;
 		}
 		this.emit("frame", frame);
@@ -157,16 +157,16 @@ class UdpClient extends events.EventEmitter {
 		let message;
 		try {
 			message = NetworkMessageClass.get(messageType)!.read(messageStream) as NetworkMessage;
-		} catch (error) {
-			if (!(error instanceof DecodeError)) {
-				error = new DecodeError(
-					`Unexpected error decoding message: ${error.message}`,
-					{ error },
+		} catch (err) {
+			if (!(err instanceof DecodeError)) {
+				err = new DecodeError(
+					`Unexpected error decoding message: ${err.message}`,
+					{ error: err },
 				);
 			}
-			error.messageStream = messageStream;
-			error.messageData = messageData;
-			this.emit("error", error);
+			err.messageStream = messageStream;
+			err.messageData = messageData;
+			this.emit("error", err);
 			return;
 		}
 		if (messageStream.readable) {
