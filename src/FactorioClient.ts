@@ -35,12 +35,14 @@ declare interface FactorioClient {
 	on(event: "connection_accept_or_deny", listener: (message: ConnectionAcceptOrDeny) => void): this,
 	on(event: "server_to_client_heartbeat", listener: (message: ServerToClientHeartbeat) => void): this,
 	on(event: "join_game", listener: (data: { playerIndex: number }) => void): this,
+	on(event: "close", listener: () => void): this,
 	on(event: "error", listener: (err: Error) => void): this,
 	on(event: "send_heartbeat", listener: () => void): this,
 	emit(event: "connection_request_reply", message: ConnectionRequestReply): boolean,
 	emit(event: "connection_accept_or_deny", message: ConnectionAcceptOrDeny): boolean,
 	emit(event: "server_to_client_heartbeat", message: ServerToClientHeartbeat): boolean,
 	emit(event: "join_game", data: { playerIndex: number }): boolean,
+	emit(event: "close"): boolean,
 	emit(event: "error", err: Error): boolean,
 	emit(event: "send_heartbeat"): boolean,
 }
@@ -92,6 +94,7 @@ class FactorioClient extends events.EventEmitter {
 	) {
 		super();
 		this.connection.on("message", this.handleMessage.bind(this));
+		this.connection.on("close", () => { this.emit("close"); });
 		this.connection.on("error", (err) => {
 			this.abort();
 			this.emit("error", err);
@@ -127,6 +130,11 @@ class FactorioClient extends events.EventEmitter {
 		this.reset();
 	}
 
+	close() {
+		this.abort();
+		this.connection.close();
+	}
+
 	handleMessage(message: NetworkMessage) {
 		switch (message.type) {
 			case NetworkMessageType.ConnectionRequestReply:
@@ -160,6 +168,7 @@ class FactorioClient extends events.EventEmitter {
 						`Server refused connection: ${ConnectionRequestStatus[message.status]} (${message.status})`,
 						message.status,
 					));
+					break;
 				}
 
 				// We have a connection, start sending heartbeats.

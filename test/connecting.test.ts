@@ -38,7 +38,7 @@ test("valid connection request", async () => {
 	try {
 		await client.connect("localhost", serverInterface.gamePort);
 	} finally {
-		client.abort();
+		client.close();
 	}
 });
 
@@ -49,7 +49,7 @@ describe("invalid connection request", () => {
 	});
 
 	afterEach(async () => {
-		client.reset();
+		client.close();
 	});
 
 	test("mods mismatch", async () => {
@@ -78,7 +78,7 @@ describe("invalid connection request", () => {
 			client.playerName = "player_limit_reached";
 			await expect(client.connect("localhost", serverInterface.gamePort)).rejects.toThrow(/PlayerLimitReached/);
 		} finally {
-			altClient.abort();
+			altClient.close();
 			await serverInterface.sendRcon("/config set max-players 0");
 		}
 	});

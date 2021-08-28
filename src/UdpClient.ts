@@ -22,21 +22,26 @@ declare interface UdpClient {
 	on(event: "send_frame", listener: (frame: NetworkFrame, data: Buffer) => void): this,
 	on(event: "message", listener: (message: NetworkMessage, data: Buffer) => void): this,
 	on(event: "frame", listener: (frame: NetworkFrame, data: Buffer) => void): this,
+	on(event: "close", listener: () => void): this,
 	on(event: "error", listener: (err: Error) => void): this,
 	emit(event: "send_message", message: NetworkMessage, data: Buffer): boolean,
 	emit(event: "send_frame", frame: NetworkFrame, data: Buffer): boolean,
 	emit(event: "message", message: NetworkMessage, data: Buffer): boolean,
 	emit(event: "frame", frame: NetworkFrame, data: Buffer): boolean,
+	emit(event: "close"): boolean,
 	emit(event: "error", err: Error): boolean,
 }
 
 class UdpClient extends events.EventEmitter {
 	socket: dgram.Socket;
+	connected = false;
 	receivedFragments = new Map<number, FragmentData>();
 
 	constructor() {
 		super();
 		this.socket = dgram.createSocket("udp4", this.handleFrame.bind(this));
+		this.socket.on("connect", () => { this.connected = true; });
+		this.socket.on("close", () => { this.emit("close"); });
 		this.socket.on("error", err => { this.emit("error", err); });
 	}
 
@@ -46,8 +51,16 @@ class UdpClient extends events.EventEmitter {
 	}
 
 	reset() {
+		if (this.connected) {
+			this.socket.disconnect();
+			this.connected = false;
+		}
+		this.receivedFragments = new Map();
+	}
+
+	close() {
+		this.reset();
 		this.socket.close();
-		this.receivedFragments.clear();
 	}
 
 	send(message: NetworkMessage) {
