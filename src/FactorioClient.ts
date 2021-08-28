@@ -12,6 +12,7 @@ import {
 	PeerDisconnect,
 	ClientChangedState,
 	ClientMultiplayerStateType,
+	IncreasedLatencyConfirm,
 	AuxiliaryDataDownloadFinished,
 } from "./synchronizer_action";
 import {
@@ -27,13 +28,16 @@ import {
 	TickClosure,
 	Heartbeat,
 } from "./network_message";
-import { ConnectingFailed } from "./errors";
+import { ConnectingFailed, Disconnected } from "./errors";
 
 
 declare interface FactorioClient {
 	on(event: "connection_request_reply", listener: (message: ConnectionRequestReply) => void): this,
 	on(event: "connection_accept_or_deny", listener: (message: ConnectionAcceptOrDeny) => void): this,
 	on(event: "server_to_client_heartbeat", listener: (message: ServerToClientHeartbeat) => void): this,
+	on(event: "tick", listener: () => void): this,
+	on(event: "input_action", listener: (inputAction: InputAction) => void): this,
+	on(event: "synchronizer_action", listener: (synchronizerActions: SynchronizerAction) => void): this,
 	on(event: "join_game", listener: (data: { playerIndex: number }) => void): this,
 	on(event: "close", listener: () => void): this,
 	on(event: "error", listener: (err: Error) => void): this,
@@ -41,6 +45,9 @@ declare interface FactorioClient {
 	emit(event: "connection_request_reply", message: ConnectionRequestReply): boolean,
 	emit(event: "connection_accept_or_deny", message: ConnectionAcceptOrDeny): boolean,
 	emit(event: "server_to_client_heartbeat", message: ServerToClientHeartbeat): boolean,
+	emit(event: "tick"): boolean,
+	emit(event: "input_action", inputAction: InputAction): boolean,
+	emit(event: "synchronizer_action", synchronizerActions: SynchronizerAction): boolean,
 	emit(event: "join_game", data: { playerIndex: number }): boolean,
 	emit(event: "close"): boolean,
 	emit(event: "error", err: Error): boolean,
@@ -52,13 +59,15 @@ class FactorioClient extends events.EventEmitter {
 
 	clientRequestID?: number;
 	connection = new UdpClient();
-	heartbeatInterval?: NodeJS.Timer;
+	stepTimeInterval?: NodeJS.Timer;
 	clientSequence = 0;
 	serverSequence = 0;
 	synchronizerActionsToSend: SynchronizerAction[] = [];
-	inputActionsToSend: InputAction[] = [];
-	nextToReceiveServerTickClosure: number = 2 ** 32 - 1
-	currentTickClosure: number | null = null;
+	updateTick: number | null = null;
+	tickClosuresReceived = new Map<number, TickClosure>();
+	nextTickClosureToSend: number | null = null;
+	tickClosuresToSend: TickClosure[] = [];
+	inputActionsToSend = new Map<number, InputAction[]>();
 	latency = 0;
 	playerIndex: number | null = null;
 	peerID: number | null = null;
@@ -68,16 +77,18 @@ class FactorioClient extends events.EventEmitter {
 	reset() {
 		delete this.clientRequestID;
 		this.connection.reset();
-		if (this.heartbeatInterval) {
-			clearInterval(this.heartbeatInterval);
-			delete this.heartbeatInterval;
+		if (this.stepTimeInterval) {
+			clearInterval(this.stepTimeInterval);
+			delete this.stepTimeInterval;
 		}
 		this.clientSequence = 0;
 		this.serverSequence = 0;
 		this.synchronizerActionsToSend = [];
-		this.inputActionsToSend = [];
-		this.nextToReceiveServerTickClosure = 2 ** 32 - 1;
-		this.currentTickClosure = null;
+		this.updateTick = null;
+		this.tickClosuresReceived = new Map();
+		this.nextTickClosureToSend = null;
+		this.tickClosuresToSend = [];
+		this.inputActionsToSend = new Map();
 		this.latency = 0;
 		this.playerIndex = null;
 		this.peerID = null;
@@ -121,9 +132,9 @@ class FactorioClient extends events.EventEmitter {
 	 * Aborts any current connection
 	 */
 	abort() {
-		if (this.heartbeatInterval) {
+		if (this.stepTimeInterval) {
 			this.synchronizerActionsToSend = [new PeerDisconnect(DisconnectReason.Quit)];
-			this.inputActionsToSend = [];
+			this.tickClosuresToSend = [];
 			this.sendHeartbeat();
 		}
 
@@ -178,9 +189,9 @@ class FactorioClient extends events.EventEmitter {
 				this.peerID = message.newPeerID;
 				this.clientSequence = message.firstSequenceNumberToSend;
 				this.serverSequence = message.firstSequenceNumberToExpect;
-				this.heartbeatInterval = setInterval(() => {
+				this.stepTimeInterval = setInterval(() => {
 					try {
-						this.sendHeartbeat();
+						this.stepTime();
 					} catch (err) {
 						this.abort();
 						this.emit("error", err);
@@ -191,44 +202,57 @@ class FactorioClient extends events.EventEmitter {
 			case NetworkMessageType.ServerToClientHeartbeat:
 				this.emit("server_to_client_heartbeat", message);
 				for (let tickClosure of message.heartbeat.tickClosures) {
-					this.nextToReceiveServerTickClosure = tickClosure.updateTick + 1;
-					for (let inputAction of tickClosure.inputActions) {
-						if (inputAction.type === InputActionType.PlayerJoinGame) {
-							const playerJoinData = inputAction.data! as PlayerJoinGameData;
-							if (playerJoinData.peerID === this.peerID) {
-								this.playerIndex = playerJoinData.playerIndex;
-								this.emit("join_game", { playerIndex: this.playerIndex });
-							}
-						}
-					}
+					this.tickClosuresReceived.set(tickClosure.updateTick, tickClosure);
 				}
 
 				for (let synchronizerAction of message.heartbeat.synchronizerActions) {
-					if (synchronizerAction.peerID !== this.peerID) {
-						continue; // Ignore actions targeting other clients
-					}
+					this.emit("synchronizer_action", synchronizerAction);
 					switch (synchronizerAction.type) {
+						case SynchronizerActionType.PeerDisconnect:
+							if (synchronizerAction.peerID === this.peerID) {
+								this.reset();
+								this.emit("error", new Disconnected(
+									`${DisconnectReason[synchronizerAction.reason]} (${synchronizerAction.reason})`,
+									synchronizerAction.reason,
+								));
+							}
+
 						case SynchronizerActionType.AuxiliaryDataReadyForDownload:
+							if (synchronizerAction.peerID !== this.peerID) {
+								break;
+							}
 							this.synchronizerActionsToSend.push(
 								new AuxiliaryDataDownloadFinished(),
 							);
 							break;
 
 						case SynchronizerActionType.MapReadyForDownload:
+							if (synchronizerAction.peerID !== this.peerID) {
+								break;
+							}
+							this.updateTick = synchronizerAction.updateTick;
 							this.changeState(ClientMultiplayerStateType.ConnectedDownloadingMap);
 							this.changeState(ClientMultiplayerStateType.WaitingForCommandToStartSendingTickClosures);
 							break;
 
 						case SynchronizerActionType.ClientShouldStartSendingTickClosures:
+							if (synchronizerAction.peerID !== this.peerID) {
+								break;
+							}
 							this.changeState(ClientMultiplayerStateType.InGame);
-							this.currentTickClosure = synchronizerAction.firstExpectedTickClosureTick;
+							this.nextTickClosureToSend = synchronizerAction.firstExpectedTickClosureTick;
 							break;
 
 						case SynchronizerActionType.ChangeLatency:
+							this.nextTickClosureToSend = this.updateTick! + this.latency;
+							if (this.latency < synchronizerAction.latency) {
+								this.synchronizerActionsToSend.push(new IncreasedLatencyConfirm(
+									this.updateTick! + this.latency, synchronizerAction.latency - this.latency
+								));
+							}
 							this.latency = synchronizerAction.latency;
 							break;
 
-						case SynchronizerActionType.PeerDisconnect:
 						case SynchronizerActionType.NewPeerInfo:
 						case SynchronizerActionType.MapSavingProgressUpdate:
 						case SynchronizerActionType.SavingForUpdate:
@@ -244,38 +268,92 @@ class FactorioClient extends events.EventEmitter {
 				}
 				break;
 
+			case NetworkMessageType.Empty:
+				break;
+
 			default:
 				this.abort();
 				this.emit("error", new Error(`Unhandled message ${NetworkMessageType[message.type]}`));
 		}
 	}
 
-	sendHeartbeat() {
-		this.emit("send_heartbeat");
-		const tickClosures: TickClosure[] = [];
-		if (this.currentTickClosure !== null) {
-			let count = (this.nextToReceiveServerTickClosure - 1 + this.latency) - this.currentTickClosure;
-			// We send up to three tick closures per heartbeat
-			count = Math.max(0, Math.min(count, 3))
-			for (let i = 0; i < count; i++) {
-				tickClosures.push(new TickClosure(
-					this.currentTickClosure++,
-					this.inputActionsToSend,
-					[],
-				))
-				this.inputActionsToSend = [];
+	sendInNextTickClosure(action: InputAction) {
+		if (this.updateTick === null || this.nextTickClosureToSend === null || this.playerIndex == null) {
+			throw new Error("Cannot send actions before having joined the game");
+		}
+
+		if (action.playerIndex === undefined) {
+			action.playerIndex = this.playerIndex;
+		}
+
+		let updateTick = Math.max(this.nextTickClosureToSend, this.updateTick + this.latency);
+		let toSend = this.inputActionsToSend.get(updateTick);
+		if (toSend) {
+			toSend.push(action);
+		} else {
+			this.inputActionsToSend.set(updateTick, [action]);
+		}
+	}
+
+	stepTime() {
+		// For now simulate a client which instantly catches up with the server.
+		while (this.updateTick !== null && this.tickClosuresReceived.has(this.updateTick)) {
+			this.stepTick();
+		}
+
+		this.sendHeartbeat();
+	}
+
+	stepTick() {
+		if (this.updateTick === null) {
+			throw new Error("Cannot step unknown tick");
+		}
+
+		const serverTickClosure = this.tickClosuresReceived.get(this.updateTick);
+		if (!serverTickClosure) {
+			throw new Error("Server tick closure has not been received");
+		}
+
+		this.emit("tick");
+		for (let inputAction of serverTickClosure.inputActions) {
+			this.emit("input_action", inputAction);
+			if (inputAction.type === InputActionType.PlayerJoinGame) {
+				const playerJoinData = inputAction.data! as PlayerJoinGameData;
+				if (playerJoinData.peerID === this.peerID) {
+					this.playerIndex = playerJoinData.playerIndex;
+					this.emit("join_game", { playerIndex: this.playerIndex });
+				}
 			}
 		}
 
-		const heartbeat = new Heartbeat(
+		const latencyTick = this.updateTick + this.latency;
+		if (this.nextTickClosureToSend !== null && latencyTick >= this.nextTickClosureToSend) {
+			this.tickClosuresToSend.push(new TickClosure(
+				latencyTick,
+				this.inputActionsToSend.get(latencyTick) || [],
+				[]
+			));
+
+		} else if (this.inputActionsToSend.get(latencyTick)) {
+			throw new Error("Input actions to send before the server expected them");
+		}
+
+		this.tickClosuresReceived.delete(this.updateTick);
+		this.inputActionsToSend.delete(this.updateTick);
+		this.updateTick++;
+	}
+
+	sendHeartbeat() {
+		this.emit("send_heartbeat");
+		let heartbeat = new Heartbeat(
 			this.clientSequence++,
-			tickClosures,
-			this.nextToReceiveServerTickClosure,
+			this.tickClosuresToSend,
+			this.updateTick !== null ? this.updateTick : 2 ** 32 - 1,
 			this.synchronizerActionsToSend,
 			[],
 		);
+		this.tickClosuresToSend = [];
 		this.synchronizerActionsToSend = [];
-
 		this.connection.send(new ClientToServerHeartbeat(heartbeat));
 	}
 }

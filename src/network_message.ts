@@ -327,7 +327,7 @@ export class TickClosure {
 		let lastPlayerIndex = 0xffff;
 		for (let i = 0; i < inputActionCount; i++) {
 			const action = InputAction.read(stream, lastPlayerIndex);
-			lastPlayerIndex = action.playerIndex;
+			lastPlayerIndex = action.playerIndex!;
 			inputActions.push(action);
 		}
 
@@ -358,7 +358,7 @@ export class TickClosure {
 		let lastPlayerIndex = 0xffff;
 		for (let inputAction of this.inputActions) {
 			inputAction.write(stream, lastPlayerIndex);
-			lastPlayerIndex = inputAction.playerIndex;
+			lastPlayerIndex = inputAction.playerIndex!;
 		}
 
 		if (hasInputActionSegments) {

@@ -1,4 +1,5 @@
-import { ConnectionRequestStatus, } from "./network_message";
+import { DisconnectReason } from "./data";
+import { ConnectionRequestStatus } from "./network_message";
 
 export class ConnectingFailed extends Error {
 	code = "CONNECTION_FAILED";
@@ -10,3 +11,12 @@ export class ConnectingFailed extends Error {
 	}
 }
 
+export class Disconnected extends Error {
+	code = "DISCONNECTED";
+	constructor(
+		message: string,
+		public reason: DisconnectReason,
+	) {
+		super(message);
+	}
+}

@@ -5,7 +5,14 @@ import * as libConfig from "@clusterio/lib/config";
 import { ConsoleTransport, logger } from "@clusterio/lib/logging";
 import * as libLoggingUtils from "@clusterio/lib/logging_utils";
 
-import { ModID, ModVersion } from "../src";
+import {
+	FactorioClient,
+	ReadableStream,
+	WritableStream,
+	NetworkMessageTypeToClass,
+	ModID,
+	ModVersion,
+} from "../src";
 
 
 logger.add(new ConsoleTransport({
@@ -92,6 +99,27 @@ export class ServerInterface {
 
 	get activeMods() {
 		return [new ModID("base", this.baseVersion, this.baseChecksum)];
+	}
+
+	createClient() {
+		let client = new FactorioClient(
+			"player",
+			this.coreChecksum,
+			this.prototypeListChecksum,
+			this.activeMods,
+		);
+		// Validate that data types used round trip serialize
+		client.connection.on("send_message", (message, data) => {
+			const messageStream = new ReadableStream(data);
+			const decodedMessage = NetworkMessageTypeToClass.get(message.type)!.read(messageStream);
+			expect(decodedMessage).toEqual(message);
+		});
+		client.connection.on("message", (message, data) => {
+			const messageStream = new WritableStream();
+			message.write(messageStream);
+			expect(messageStream.data()).toEqual(data);
+		});
+		return client;
 	}
 
 	async setupServer() {

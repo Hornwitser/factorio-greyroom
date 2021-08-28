@@ -6,35 +6,11 @@ import {
 	ModID,
 	ModVersion,
 	ClientMultiplayerStateType,
-	ReadableStream,
-	WritableStream,
-	NetworkMessageTypeToClass,
 } from "../src";
 import { serverInterface } from "./server_integration";
 
-function createClient() {
-	let client = new FactorioClient(
-		"player",
-		serverInterface.coreChecksum,
-		serverInterface.prototypeListChecksum,
-		serverInterface.activeMods,
-	);
-	// Validate that data types used round trip serialize
-	client.connection.on("send_message", (message, data) => {
-		const messageStream = new ReadableStream(data);
-		const decodedMessage = NetworkMessageTypeToClass.get(message.type)!.read(messageStream);
-		expect(decodedMessage).toEqual(message);
-	});
-	client.connection.on("message", (message, data) => {
-		const messageStream = new WritableStream();
-		message.write(messageStream);
-		expect(messageStream.data()).toEqual(data);
-	});
-	return client;
-}
-
 test("valid connection request", async () => {
-	const client = createClient();
+	const client = serverInterface.createClient();
 	try {
 		await client.connect("localhost", serverInterface.gamePort);
 	} finally {
@@ -45,7 +21,7 @@ test("valid connection request", async () => {
 describe("invalid connection request", () => {
 	let client: FactorioClient;
 	beforeEach(() => {
-		client = createClient();
+		client = serverInterface.createClient();
 	});
 
 	afterEach(async () => {
@@ -129,7 +105,7 @@ describe("invalid connection request", () => {
 
 		client.playerName = "address_used_for_different_player",
 		client.state = ClientMultiplayerStateType.Connecting;
-		clearInterval(client.heartbeatInterval!);
+		clearInterval(client.stepTimeInterval!);
 		client.clientRequestID = Math.round(Math.random() * 2 ** 32);
 		const request = new ConnectionRequest(new Version(0, 0, 0, 0), client.clientRequestID);
 		client.connection.send(request);

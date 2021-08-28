@@ -270,8 +270,11 @@ export type InputData =
 export class InputAction {
 	constructor(
 		public type: InputActionType,
-		public playerIndex: number,
 		public data?: InputData,
+		// For convenience when creating actions to send the playerIndex can
+		// be left out which will cause FactorioClient.sendInNextTickClosure
+		// to set it to the client's playerIndex
+		public playerIndex?: number,
 	) { }
 
 	static read(stream: ReadableStream, lastPlayerIndex: number) {
@@ -343,6 +346,7 @@ export class InputAction {
 				break;
 
 			case InputActionType.CheckCRCHeuristic:
+			case InputActionType.CheckCRC:
 				data = {
 					crc: stream.readUInt32(),
 					tickOfCrc: stream.readUInt32(),
@@ -373,14 +377,14 @@ export class InputAction {
 
 		return new InputAction(
 			type,
-			playerIndex,
 			data,
+			playerIndex,
 		);
 	}
 
 	write(stream: WritableStream, lastPlayerIndex: number) {
 		stream.writeUInt8(this.type);
-		stream.writeSpaceOptimizedUInt16(this.playerIndex - lastPlayerIndex & 0xffff);
+		stream.writeSpaceOptimizedUInt16(this.playerIndex! - lastPlayerIndex & 0xffff);
 
 		switch (this.type) {
 			case InputActionType.Nothing:
@@ -451,6 +455,7 @@ export class InputAction {
 				break;
 
 			case InputActionType.CheckCRCHeuristic:
+			case InputActionType.CheckCRC:
 				const crcData = this.data! as CrcData;
 				stream.writeUInt32(crcData.crc);
 				stream.writeUInt32(crcData.tickOfCrc);
