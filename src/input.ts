@@ -272,7 +272,7 @@ export class InputAction {
 		public type: InputActionType,
 		public data?: InputData,
 		// For convenience when creating actions to send the playerIndex can
-		// be left out which will cause FactorioClient.sendInNextTickClosure
+		// be left out which will cause FactorioClient.sendInTickClosure
 		// to set it to the client's playerIndex
 		public playerIndex?: number,
 	) { }

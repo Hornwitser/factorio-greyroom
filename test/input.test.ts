@@ -4,6 +4,8 @@ import {
 	InputAction,
 	SynchronizerActionType,
 	SynchronizerAction,
+	DirectionEnum,
+	Direction,
 	Disconnected,
 } from "../src";
 import { serverInterface } from "./server_integration";
@@ -69,3 +71,31 @@ test("handles latency change", done => {
 	}
 	client.on("synchronizer_action", check);
 }, 15e3);
+
+test("start and stop walking input actions", done => {
+	function check(input: InputAction) {
+		if (input.type === InputActionType.StopWalking) {
+			serverInterface.sendRcon(
+				"/c rcon.print(serpent.line(game.connected_players[1].position))"
+			).then(response => {
+				try {
+					// Running speed is 0.15 per tick, but positions are rounded to 1/256.
+					expect(response).toBe(`{x = 0, y = ${Math.round(0.15 * 256) / 256 * 10}}\n`);
+				} finally {
+					done();
+				}
+			});
+			client.off("input_action", check)
+		}
+	}
+
+	client.sendInTickClosure(
+		client.updateTick! + client.latency,
+		new InputAction(InputActionType.StartWalking, new Direction(DirectionEnum.South))
+	);
+	client.sendInTickClosure(
+		client.updateTick! + client.latency + 10,
+		new InputAction(InputActionType.StopWalking),
+	);
+	client.on("input_action", check);
+});

@@ -277,8 +277,8 @@ class FactorioClient extends events.EventEmitter {
 		}
 	}
 
-	sendInNextTickClosure(action: InputAction) {
-		if (this.updateTick === null || this.nextTickClosureToSend === null || this.playerIndex == null) {
+	sendInTickClosure(updateTick: number, action: InputAction) {
+		if (this.playerIndex == null) {
 			throw new Error("Cannot send actions before having joined the game");
 		}
 
@@ -286,13 +286,21 @@ class FactorioClient extends events.EventEmitter {
 			action.playerIndex = this.playerIndex;
 		}
 
-		let updateTick = Math.max(this.nextTickClosureToSend, this.updateTick + this.latency);
 		let toSend = this.inputActionsToSend.get(updateTick);
 		if (toSend) {
 			toSend.push(action);
 		} else {
 			this.inputActionsToSend.set(updateTick, [action]);
 		}
+	}
+
+	sendInNextTickClosure(action: InputAction) {
+		if (this.updateTick === null || this.nextTickClosureToSend === null) {
+			throw new Error("Cannot send actions before having joined the game");
+		}
+
+		let updateTick = Math.max(this.nextTickClosureToSend, this.updateTick + this.latency);
+		this.sendInTickClosure(updateTick, action);
 	}
 
 	stepTime() {
