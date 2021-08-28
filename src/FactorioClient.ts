@@ -95,7 +95,7 @@ class FactorioClient extends events.EventEmitter {
 		super();
 		this.connection.on("message", this.handleMessage.bind(this));
 		this.connection.on("close", () => { this.emit("close"); });
-		this.connection.on("error", (err) => {
+		this.connection.on("error", err => {
 			this.abort();
 			this.emit("error", err);
 		});
@@ -164,6 +164,7 @@ class FactorioClient extends events.EventEmitter {
 					break;
 				}
 				if (message.status !== ConnectionRequestStatus.Valid) {
+					this.abort();
 					this.emit("error", new ConnectingFailed(
 						`Server refused connection: ${ConnectionRequestStatus[message.status]} (${message.status})`,
 						message.status,
@@ -181,6 +182,7 @@ class FactorioClient extends events.EventEmitter {
 					try {
 						this.sendHeartbeat();
 					} catch (err) {
+						this.abort();
 						this.emit("error", err);
 					}
 				}, 1000 / 30);
@@ -233,6 +235,7 @@ class FactorioClient extends events.EventEmitter {
 							break; // Ignore
 
 						default:
+							this.abort();
 							const actionName = SynchronizerActionType[synchronizerAction.type];
 							this.emit("error", new Error(
 								`Unhandled synchronizer action ${actionName} (${synchronizerAction.type})`
@@ -242,6 +245,7 @@ class FactorioClient extends events.EventEmitter {
 				break;
 
 			default:
+				this.abort();
 				this.emit("error", new Error(`Unhandled message ${NetworkMessageType[message.type]}`));
 		}
 	}

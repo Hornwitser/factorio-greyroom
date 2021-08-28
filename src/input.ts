@@ -439,6 +439,11 @@ export class InputAction {
 			case InputActionType.StopBuildingByMoving:
 			case InputActionType.FlushOpenedEntityFluid:
 			case InputActionType.ForceFullCRC:
+				if (this.data !== undefined) {
+					throw new Error(
+						`Attempt to send data with empty input action ${InputActionType[this.type]}`
+					);
+				}
 				break; // No data
 
 			case InputActionType.StartWalking:
