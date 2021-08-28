@@ -15,6 +15,38 @@ import {
 } from "../src";
 
 
+const mapGenSettings = {
+	terrain_segmentation: 1,
+	water: 1,
+	autoplace_controls: {
+		"coal": { frequency: 1, size: 1, richness: 1 },
+		"copper-ore": { frequency: 1, size: 1, richness: 1 },
+		"crude-oil": { frequency: 1, size: 1, richness: 1 },
+		"enemy-base": { frequency: 1, size: 1, richness: 1 },
+		"iron-ore": { frequency: 1, size: 1, richness: 1 },
+		"stone": { frequency: 1, size: 1, richness: 1 },
+		"trees": { frequency: 1, size: 1, richness: 1 },
+		"uranium-ore": { frequency: 1, size: 1, richness: 1 }
+	},
+	autoplace_settings: {},
+	default_enable_all_autoplace_controls: true,
+	seed: 1207360873,
+	// Width and height of 50 is a "debug map" and skips the intro.
+	width: 50,
+	height: 50,
+	starting_area: 1,
+	peaceful_mode: false,
+	starting_points: [{ x: 0, y: 0 }],
+	property_expression_names: {},
+	cliff_settings: {
+		name: "cliff",
+		elevation_0: 10,
+		elevation_interval: 40,
+		richness: 1
+	}
+};
+
+
 logger.add(new ConsoleTransport({
 	level: "info",
 	format: new libLoggingUtils.TerminalFormat(),
@@ -143,6 +175,16 @@ export class ServerInterface {
 		);
 	}
 
+	async createSave() {
+		await libLink.messages.createSave.send(this.control, {
+			instance_id: this.instanceId,
+			name: "world.zip",
+			seed: null,
+			map_gen_settings: mapGenSettings,
+			map_settings: null,
+		});
+	}
+
 	async startServer() {
 		await libLink.messages.startInstance.send(this.control, { instance_id: this.instanceId, save: null });
 	}
@@ -168,6 +210,7 @@ export const serverInterface = new ServerInterface(control);
 beforeAll(async () => {
 	await connector.connect();
 	await serverInterface.setupServer();
+	await serverInterface.createSave();
 	await serverInterface.startServer();
 });
 
