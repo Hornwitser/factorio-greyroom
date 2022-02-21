@@ -192,7 +192,7 @@ class FactorioClient extends events.EventEmitter {
 				this.stepTimeInterval = setInterval(() => {
 					try {
 						this.stepTime();
-					} catch (err) {
+					} catch (err: any) {
 						this.abort();
 						this.emit("error", err);
 					}

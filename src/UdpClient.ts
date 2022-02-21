@@ -83,7 +83,7 @@ class UdpClient extends events.EventEmitter {
 		let frame;
 		try {
 			frame = NetworkFrame.read(frameStream);
-		} catch (err) {
+		} catch (err: any) {
 			if (!(err instanceof DecodeError)) {
 				err = new DecodeError(
 					`Unexpected error decoding frame: ${err.message}`,
@@ -144,7 +144,7 @@ class UdpClient extends events.EventEmitter {
 		let message;
 		try {
 			message = NetworkMessageTypeToClass.get(messageType)!.read(messageStream) as NetworkMessage;
-		} catch (err) {
+		} catch (err: any) {
 			if (!(err instanceof DecodeError)) {
 				err = new DecodeError(
 					`Unexpected error decoding message: ${err.message}`,

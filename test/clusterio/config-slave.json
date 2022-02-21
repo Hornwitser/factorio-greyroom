@@ -8,7 +8,7 @@
                 "factorio_directory": "factorio",
                 "instances_directory": "instances",
                 "master_url": "http://localhost:18729/",
-                "master_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJzbGF2ZSIsInNsYXZlIjoxLCJpYXQiOjE2Mjk3NjIzNjN9.2gcLrJNE0qBadI_ClULGk02KiMTPOnu4_C0vFaKHstU",
+                "master_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJzbGF2ZSIsInNsYXZlIjoxLCJpYXQiOjE2NDU0MDgzMjB9._oN4_YyDFTlFsTBg5Lo6Kp3i6LDE4odKXqRhCAV8T5Q",
                 "tls_ca": null,
                 "public_address": "localhost",
                 "reconnect_delay": 5

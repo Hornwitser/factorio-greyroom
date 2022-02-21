@@ -54,7 +54,7 @@ logger.add(new ConsoleTransport({
 libConfig.finalizeConfigs();
 
 class TestControlConnector extends libLink.WebSocketClientConnector {
-	token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJ1c2VyIiwidXNlciI6InRlc3QiLCJpYXQiOjE2Mjk3NzAxMTV9.U0ji6GMERmjz9JD4IZNI64DnhZb61yAW3QTuPKP9HpM";
+	token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJ1c2VyIiwidXNlciI6InRlc3QiLCJpYXQiOjE2NDU0MDgyMDJ9.Evc8o5LchFpzNcXkIbLeCa2st2Sd92Cdv-6K770PcAU";
 	register() {
 		this.sendHandshake("register_control", { token: this.token, agent: "factorio-greyroom", version: "test" });
 	}
@@ -87,6 +87,8 @@ class TestControl extends libLink.Link {
 		//console.log(message.data.info.level, message.data.info.message);
 		this.events.emit("instance_log", message.data.info);
 	}
+
+	async accountUpdateEventHandler() { }
 }
 
 export class ServerInterface {
@@ -161,6 +163,7 @@ export class ServerInterface {
 		instanceConfig.set("instance.name", String(this.instanceId));
 		this.gamePort = Math.floor(Math.random() * (65536 - 49152) + 49152);
 		instanceConfig.set("factorio.game_port", this.gamePort);
+		instanceConfig.set("factorio.version", "1.1.38");
 		instanceConfig.setProp("factorio.settings", "name", String(this.instanceId));
 		instanceConfig.setProp("factorio.settings", "visibility", { public: false, lan: true });
 		instanceConfig.setProp("factorio.settings", "require_user_verification", false );

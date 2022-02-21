@@ -70,7 +70,7 @@ declare namespace global {
 
 export default async function setup() {
 	global.masterProcess = await spawn("../../node_modules/.bin/clusteriomaster run", /Started master/);
-	global.slaveProcess = await spawn("../../node_modules/.bin/clusterioslave run", /SOCKET \| registering slave/);
+	global.slaveProcess = await spawn("../../node_modules/.bin/clusterioslave run", /Started slave/);
 }
 
 process.on("exit", () => {

@@ -3,3 +3,4 @@
 /database/slaves.json
 /database/instances.json
 *.log
+/logs
