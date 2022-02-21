@@ -215,6 +215,7 @@ beforeAll(async () => {
 	await serverInterface.setupServer();
 	await serverInterface.createSave();
 	await serverInterface.startServer();
+	await serverInterface.sendRcon("/c game.speed = 5")
 });
 
 afterAll(async () => {
