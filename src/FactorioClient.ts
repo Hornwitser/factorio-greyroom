@@ -388,19 +388,20 @@ class FactorioClient extends events.EventEmitter {
 		}
 
 		const latencyTick = this.updateTick + this.latency;
-		if (this.nextTickClosureToSend !== null && latencyTick >= this.nextTickClosureToSend) {
+		if (latencyTick === this.nextTickClosureToSend) {
 			this.tickClosuresToSend.push(new TickClosure(
 				latencyTick,
 				this.inputActionsToSend.get(latencyTick) || [],
 				[]
 			));
+			this.nextTickClosureToSend++;
 
 		} else if (this.inputActionsToSend.get(latencyTick)) {
 			throw new Error("Input actions to send before the server expected them");
 		}
 
 		this.tickClosuresReceived.delete(this.updateTick);
-		this.inputActionsToSend.delete(this.updateTick);
+		this.inputActionsToSend.delete(latencyTick);
 		this.updateTick++;
 	}
 

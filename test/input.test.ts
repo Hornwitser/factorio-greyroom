@@ -62,6 +62,14 @@ test("disconnects on wrong player index", done => {
 });
 
 test("handles latency change", done => {
+	client.on("tick", () => {
+		if (client.playerIndex === null) {
+			return;
+		}
+		client.sendInNextTickClosure(
+			new InputAction(InputActionType.ClearCursor),
+		);
+	});
 	function check(action: SynchronizerAction) {
 		if (action.type === SynchronizerActionType.ChangeLatency) {
 			// Wait some time to make sure correct input is sent in response by the client.
