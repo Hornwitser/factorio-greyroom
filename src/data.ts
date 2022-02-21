@@ -1,4 +1,8 @@
-import { ReadableStream, WritableStream } from "./stream";
+import {
+	ReadableStream, WritableStream,
+	readUInt8, readUInt16, readUInt32, readSpaceOptimizedUInt16, readUtf8String,
+	writeUInt8, writeUInt16, writeUInt32, writeSpaceOptimizedUInt16, writeUtf8String,
+} from "./stream";
 
 export class Version {
 	constructor(
@@ -10,18 +14,18 @@ export class Version {
 
 	static read(stream: ReadableStream) {
 		return new Version(
-			stream.readUInt8(),
-			stream.readUInt8(),
-			stream.readUInt8(),
-			stream.readUInt16(),
+			readUInt8(stream),
+			readUInt8(stream),
+			readUInt8(stream),
+			readUInt16(stream),
 		);
 	}
 
-	write(stream: WritableStream) {
-		stream.writeUInt8(this.major);
-		stream.writeUInt8(this.minor);
-		stream.writeUInt8(this.patch);
-		stream.writeUInt16(this.build);
+	static write(stream: WritableStream, version: Version) {
+		writeUInt8(stream, version.major);
+		writeUInt8(stream, version.minor);
+		writeUInt8(stream, version.patch);
+		writeUInt16(stream, version.build);
 	}
 }
 
@@ -34,16 +38,16 @@ export class ModVersion {
 
 	static read(stream: ReadableStream) {
 		return new ModVersion(
-			stream.readSpaceOptimizedUInt16(),
-			stream.readSpaceOptimizedUInt16(),
-			stream.readSpaceOptimizedUInt16(),
+			readSpaceOptimizedUInt16(stream),
+			readSpaceOptimizedUInt16(stream),
+			readSpaceOptimizedUInt16(stream),
 		);
 	}
 
-	write(stream: WritableStream) {
-		stream.writeSpaceOptimizedUInt16(this.major);
-		stream.writeSpaceOptimizedUInt16(this.minor);
-		stream.writeSpaceOptimizedUInt16(this.sub);
+	static write(stream: WritableStream, version: ModVersion) {
+		writeSpaceOptimizedUInt16(stream, version.major);
+		writeSpaceOptimizedUInt16(stream, version.minor);
+		writeSpaceOptimizedUInt16(stream, version.sub);
 	}
 }
 
@@ -56,27 +60,27 @@ export class ModID {
 
 	static read(stream: ReadableStream) {
 		return new ModID(
-			stream.readUtf8String(),
+			readUtf8String(stream),
 			ModVersion.read(stream),
-			stream.readUInt32(),
+			readUInt32(stream),
 		);
 	}
 
-	write(stream: WritableStream) {
-		stream.writeUtf8String(this.name);
-		this.version.write(stream);
-		stream.writeUInt32(this.crc);
+	static write(stream: WritableStream, modID: ModID) {
+		writeUtf8String(stream, modID.name);
+		ModVersion.write(stream, modID.version);
+		writeUInt32(stream, modID.crc);
 	}
 }
 
 export class ModStartupSetting {
 	static read(stream: ReadableStream) {
-		stream.readUInt8();
+		readUInt8(stream);
 		return new ModStartupSetting();
 	}
 
-	write(stream: WritableStream) {
-		stream.writeUInt8(0);
+	static write(stream: WritableStream, setting: ModStartupSetting) {
+		writeUInt8(stream, 0);
 	}
 }
 
@@ -100,7 +104,7 @@ export class Direction {
 	) { }
 
 	static read(stream: ReadableStream) {
-		const readValue = stream.readUInt8();
+		const readValue = readUInt8(stream);
 		let targetValue = DirectionEnum.None;
 		if (readValue > 15) {
 			targetValue = (readValue >> 4) - 1;
@@ -116,7 +120,7 @@ export class Direction {
 		if (this.targetValue !== DirectionEnum.None) {
 			value += ((this.targetValue + 1) << 4);
 		}
-		stream.writeUInt8(value);
+		writeUInt8(stream, value);
 	}
 }
 
@@ -138,10 +142,10 @@ export enum DisconnectReason {
 
 export type SmallProgress = number | null;
 export function readSmallProgress(stream: ReadableStream): SmallProgress {
-	const value = stream.readUInt8();
+	const value = readUInt8(stream);
 	return value === 255 ? null : value / 254;
 }
 
-export function writeSmallProgress(progress: SmallProgress, stream: WritableStream) {
-	stream.writeUInt8(progress === null ? 255 : Math.floor(progress * 254));
+export function writeSmallProgress(stream: WritableStream, progress: SmallProgress) {
+	writeUInt8(stream, progress === null ? 255 : Math.floor(progress * 254));
 }

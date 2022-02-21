@@ -150,7 +150,7 @@ export class ServerInterface {
 		});
 		client.connection.on("message", (message, data) => {
 			const messageStream = new WritableStream();
-			message.write(messageStream);
+			message.constructor.write(messageStream, message);
 			expect(messageStream.data()).toEqual(data);
 		});
 		return client;

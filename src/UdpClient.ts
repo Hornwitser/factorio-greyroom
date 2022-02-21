@@ -65,7 +65,7 @@ class UdpClient extends events.EventEmitter {
 
 	send(message: NetworkMessage) {
 		const messageStream = new WritableStream();
-		message.write(messageStream);
+		NetworkMessageTypeToClass.get(message.type)!.write(messageStream, message)
 		const payload = messageStream.data();
 		this.emit("send_message", message, payload);
 

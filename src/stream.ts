@@ -53,22 +53,6 @@ export class ReadableStream {
 		return value;
 	}
 
-	readSpaceOptimizedUInt16() {
-		let value = this.readUInt8();
-		if (value === 0xff) {
-			value = this.readUInt16();
-		}
-		return value;
-	}
-
-	readSpaceOptimizedUInt32() {
-		let value = this.readUInt8();
-		if (value === 0xff) {
-			value = this.readUInt32();
-		}
-		return value;
-	}
-
 	readBuffer(size?: number) {
 		const end = size === undefined ? undefined : this.pos + size;
 		if (end !== undefined && end > this.buf.length) {
@@ -79,43 +63,69 @@ export class ReadableStream {
 		return buf;
 	}
 
-	readString() {
-		const size = this.readSpaceOptimizedUInt32();
-		return this.readBuffer(size);
-	}
-
-	readUtf8String() {
-		return this.readString().toString();
-	}
-
-	readArray<T>(
-		readItem: (stream: this) => T,
-		readSize = (stream: this) => stream.readSpaceOptimizedUInt32(),
-	) {
-		let items = [];
-		const size = readSize(this);
-		for (let i = 0; i < size; i++) {
-			items.push(readItem(this));
-		}
-		return items;
-	}
-
-	readMap<K, V>(
-		readKey: (stream: this) => K,
-		readValue: (stream: this) => V,
-		readSize = (stream: this) => stream.readSpaceOptimizedUInt32(),
-	) {
-		let map = new Map<K, V>();
-		const size = readSize(this);
-		for (let i = 0; i < size; i++) {
-			map.set(readKey(this), readValue(this));
-		}
-		return map;
-	}
-
 	get readable() {
 		return this.pos < this.buf.length;
 	}
+}
+
+export type Reader<T> = (stream: ReadableStream) => T;
+
+export function readBool(stream: ReadableStream) { return stream.readBool(); }
+export function readUInt8(stream: ReadableStream) { return stream.readUInt8(); }
+export function readUInt16(stream: ReadableStream) { return stream.readUInt16(); }
+export function readUInt32(stream: ReadableStream) { return stream.readUInt32();}
+export function readBuffer(stream: ReadableStream, size?: number) { return stream.readBuffer(size); }
+
+export function readSpaceOptimizedUInt16(stream: ReadableStream) {
+	let value = readUInt8(stream);
+	if (value === 0xff) {
+		value = readUInt16(stream);
+	}
+	return value;
+}
+
+export function readSpaceOptimizedUInt32(stream: ReadableStream) {
+	let value = readUInt8(stream);
+	if (value === 0xff) {
+		value = readUInt32(stream);
+	}
+	return value;
+}
+
+export function readString(stream: ReadableStream) {
+	const size = readSpaceOptimizedUInt32(stream);
+	return readBuffer(stream, size);
+}
+
+export function readUtf8String(stream: ReadableStream) {
+	return readString(stream).toString();
+}
+
+export function readArray<T>(
+	stream: ReadableStream,
+	readItem: (stream: ReadableStream) => T,
+	readSize = readSpaceOptimizedUInt32,
+) {
+	let items = [];
+	const size = readSize(stream);
+	for (let i = 0; i < size; i++) {
+		items.push(readItem(stream));
+	}
+	return items;
+}
+
+export function readMap<K, V>(
+	stream: ReadableStream,
+	readKey: (stream: ReadableStream) => K,
+	readValue: (stream: ReadableStream) => V,
+	readSize = readSpaceOptimizedUInt32,
+) {
+	let map = new Map<K, V>();
+	const size = readSize(stream);
+	for (let i = 0; i < size; i++) {
+		map.set(readKey(stream), readValue(stream));
+	}
+	return map;
 }
 
 
@@ -157,60 +167,8 @@ export class WritableStream {
 		this.bufs.push(buf);
 	}
 
-	writeSpaceOptimizedUInt16(value: number) {
-		if (value > 0xff) {
-			this.writeUInt8(0xff);
-			this.writeUInt16(value);
-		} else {
-			this.writeUInt8(value);
-		}
-	}
-
-
-	writeSpaceOptimizedUInt32(value: number) {
-		if (value > 0xff) {
-			this.writeUInt8(0xff);
-			this.writeUInt32(value);
-		} else {
-			this.writeUInt8(value);
-		}
-	}
-
 	writeBuffer(buf: Buffer) {
 		this.bufs.push(buf);
-	}
-
-	writeString(str: Buffer) {
-		this.writeSpaceOptimizedUInt32(str.length);
-		this.writeBuffer(str);
-	}
-
-	writeUtf8String(str: string) {
-		this.writeString(Buffer.from(str));
-	}
-
-	writeArray<T>(
-		items: T[],
-		writeItem = (item: T, stream: this) => { (item as unknown as Writable).write(stream); },
-		writeSize = (size: number, stream: this) => { stream.writeSpaceOptimizedUInt32(size); },
-	) {
-		writeSize(items.length, this);
-		for (let item of items) {
-			writeItem(item, this);
-		}
-	}
-
-	writeMap<K, V>(
-		map: Map<K, V>,
-		writeKey = (key: K, stream: this) => { (key as unknown as Writable).write(stream); },
-		writeValue = (value: V, stream: this) => { (value as unknown as Writable).write(stream); },
-		writeSize = (size: number, stream: this) => { stream.writeSpaceOptimizedUInt32(size); },
-	) {
-		writeSize(map.size, this);
-		for (let [key, value] of map) {
-			writeKey(key, this);
-			writeValue(value, this);
-		}
 	}
 
 	data() {
@@ -218,10 +176,68 @@ export class WritableStream {
 	}
 }
 
-export interface Writable {
-	write(stream: WritableStream): void;
+export type Writer<T> = (stream: WritableStream, value: T) => void;
+
+export function writeBool(stream: WritableStream, value: boolean) { return stream.writeBool(value); }
+export function writeUInt8(stream: WritableStream, value: number) { return stream.writeUInt8(value); }
+export function writeUInt16(stream: WritableStream, value: number) { return stream.writeUInt16(value); }
+export function writeUInt32(stream: WritableStream, value: number) { return stream.writeUInt32(value);}
+export function writeBuffer(stream: WritableStream, buf: Buffer) { return stream.writeBuffer(buf); }
+
+export function writeSpaceOptimizedUInt16(stream: WritableStream, value: number) {
+	if (value > 0xff) {
+		writeUInt8(stream, 0xff);
+		writeUInt16(stream, value);
+	} else {
+		writeUInt8(stream, value);
+	}
 }
 
-export interface Readable {
-	read(stream: ReadableStream): unknown;
+export function writeSpaceOptimizedUInt32(stream: WritableStream, value: number) {
+	if (value > 0xff) {
+		writeUInt8(stream, 0xff);
+		writeUInt32(stream, value);
+	} else {
+		writeUInt8(stream, value);
+	}
+}
+
+export function writeString(stream: WritableStream, str: Buffer) {
+	writeSpaceOptimizedUInt32(stream, str.length);
+	writeBuffer(stream, str);
+}
+
+export function writeUtf8String(stream: WritableStream, str: string) {
+	writeString(stream, Buffer.from(str));
+}
+
+export function writeArray<T>(
+	stream: WritableStream,
+	items: T[],
+	writeItem: Writer<T>,
+	writeSize: Writer<number> = writeSpaceOptimizedUInt32,
+) {
+	writeSize(stream, items.length);
+	for (let item of items) {
+		writeItem(stream, item);
+	}
+}
+
+export function writeMap<K, V>(
+	stream: WritableStream,
+	map: Map<K, V>,
+	writeKey: Writer<K>,
+	writeValue: Writer<V>,
+	writeSize: Writer<number> = writeSpaceOptimizedUInt32,
+) {
+	writeSize(stream, map.size);
+	for (let [key, value] of map) {
+		writeKey(stream, key);
+		writeValue(stream, value);
+	}
+}
+
+export interface Streamable<T> {
+	read(stream: ReadableStream): T,
+	write(stream: WritableStream, value: T): void,
 }

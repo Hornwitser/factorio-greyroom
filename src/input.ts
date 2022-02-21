@@ -1,4 +1,10 @@
-import { DecodeError, ReadableStream, EncodeError, WritableStream } from "./stream";
+import {
+	DecodeError, ReadableStream, EncodeError, WritableStream,
+	readBool, readUInt8, readUInt16, readUInt32,
+	readSpaceOptimizedUInt16, readSpaceOptimizedUInt32, readString, readUtf8String,
+	writeBool, writeUInt8, writeUInt16, writeUInt32,
+	writeSpaceOptimizedUInt16, writeSpaceOptimizedUInt32, writeString, writeUtf8String,
+} from "./stream";
 import { Direction, DisconnectReason } from "./data";
 
 export enum InputActionType {
@@ -278,8 +284,8 @@ export class InputAction {
 	) { }
 
 	static read(stream: ReadableStream, lastPlayerIndex: number) {
-		const type = stream.readUInt8();
-		const playerIndex = (stream.readSpaceOptimizedUInt16() + lastPlayerIndex) & 0xffff;
+		const type = readUInt8(stream);
+		const playerIndex = (readSpaceOptimizedUInt16(stream) + lastPlayerIndex) & 0xffff;
 
 		let data;
 		switch (type) {
@@ -348,24 +354,24 @@ export class InputAction {
 			case InputActionType.CheckCRCHeuristic:
 			case InputActionType.CheckCRC:
 				data = {
-					crc: stream.readUInt32(),
-					tickOfCrc: stream.readUInt32(),
+					crc: readUInt32(stream),
+					tickOfCrc: readUInt32(stream),
 				};
 				break;
 
 			case InputActionType.PlayerJoinGame:
 				data = {
-					peerID: stream.readSpaceOptimizedUInt16(),
-					playerIndex: stream.readUInt16(),
-					forceID: stream.readUInt8(),
-					username: stream.readUtf8String(),
-					asEditor: stream.readBool(),
-					admin: stream.readBool(),
+					peerID: readSpaceOptimizedUInt16(stream),
+					playerIndex: readUInt16(stream),
+					forceID: readUInt8(stream),
+					username: readUtf8String(stream),
+					asEditor: readBool(stream),
+					admin: readBool(stream),
 				}
 				break;
 
 			case InputActionType.PlayerLeaveGame:
-				data = stream.readUInt8();
+				data = readUInt8(stream);
 				break;
 
 			default:
@@ -382,11 +388,11 @@ export class InputAction {
 		);
 	}
 
-	write(stream: WritableStream, lastPlayerIndex: number) {
-		stream.writeUInt8(this.type);
-		stream.writeSpaceOptimizedUInt16(this.playerIndex! - lastPlayerIndex & 0xffff);
+	static write(stream: WritableStream, input: InputAction, lastPlayerIndex: number) {
+		writeUInt8(stream, input.type);
+		writeSpaceOptimizedUInt16(stream, input.playerIndex! - lastPlayerIndex & 0xffff);
 
-		switch (this.type) {
+		switch (input.type) {
 			case InputActionType.Nothing:
 			case InputActionType.StopWalking:
 			case InputActionType.BeginMining:
@@ -443,42 +449,42 @@ export class InputAction {
 			case InputActionType.StopBuildingByMoving:
 			case InputActionType.FlushOpenedEntityFluid:
 			case InputActionType.ForceFullCRC:
-				if (this.data !== undefined) {
+				if (input.data !== undefined) {
 					throw new Error(
-						`Attempt to send data with empty input action ${InputActionType[this.type]}`
+						`Attempt to send data with empty input action ${InputActionType[input.type]}`
 					);
 				}
 				break; // No data
 
 			case InputActionType.StartWalking:
-				(this.data! as Direction).write(stream);
+				(input.data! as Direction).write(stream);
 				break;
 
 			case InputActionType.CheckCRCHeuristic:
 			case InputActionType.CheckCRC:
-				const crcData = this.data! as CrcData;
-				stream.writeUInt32(crcData.crc);
-				stream.writeUInt32(crcData.tickOfCrc);
+				const crcData = input.data! as CrcData;
+				writeUInt32(stream, crcData.crc);
+				writeUInt32(stream, crcData.tickOfCrc);
 				break;
 
 			case InputActionType.PlayerJoinGame:
-				const playerJoinData = this.data! as PlayerJoinGameData;
-				stream.writeSpaceOptimizedUInt16(playerJoinData.peerID);
-				stream.writeUInt16(playerJoinData.playerIndex);
-				stream.writeUInt8(playerJoinData.forceID);
-				stream.writeUtf8String(playerJoinData.username);
-				stream.writeBool(playerJoinData.asEditor);
-				stream.writeBool(playerJoinData.admin);
+				const playerJoinData = input.data! as PlayerJoinGameData;
+				writeSpaceOptimizedUInt16(stream, playerJoinData.peerID);
+				writeUInt16(stream, playerJoinData.playerIndex);
+				writeUInt8(stream, playerJoinData.forceID);
+				writeUtf8String(stream, playerJoinData.username);
+				writeBool(stream, playerJoinData.asEditor);
+				writeBool(stream, playerJoinData.admin);
 				break;
 
 			case InputActionType.PlayerLeaveGame:
-				stream.writeUInt8(this.data! as DisconnectReason);
+				writeUInt8(stream, input.data! as DisconnectReason);
 				break;
 
 			default:
 				throw new EncodeError(
-					`Unknown input action ${InputActionType[this.type]} (${this.type})`,
-					{ stream, target: this },
+					`Unknown input action ${InputActionType[input.type]} (${input.type})`,
+					{ stream, target: input },
 				);
 		}
 	}
@@ -497,22 +503,22 @@ export class InputActionSegment {
 
 	static read(stream: ReadableStream) {
 		return new InputActionSegment(
-			stream.readUInt8(),
-			stream.readUInt32(),
-			stream.readSpaceOptimizedUInt16(),
-			stream.readSpaceOptimizedUInt32(),
-			stream.readSpaceOptimizedUInt32(),
-			stream.readString(),
+			readUInt8(stream),
+			readUInt32(stream),
+			readSpaceOptimizedUInt16(stream),
+			readSpaceOptimizedUInt32(stream),
+			readSpaceOptimizedUInt32(stream),
+			readString(stream),
 		);
 	}
 
-	write(stream: WritableStream) {
-		stream.writeUInt8(this.type);
-		stream.writeUInt32(this.id);
-		stream.writeSpaceOptimizedUInt16(this.playerIndex);
-		stream.writeSpaceOptimizedUInt32(this.totalSegments);
-		stream.writeSpaceOptimizedUInt32(this.segmentNumber);
-		stream.writeString(this.payload);
+	static write(stream: WritableStream, segment: InputActionSegment) {
+		writeUInt8(stream, segment.type);
+		writeUInt32(stream, segment.id);
+		writeSpaceOptimizedUInt16(stream, segment.playerIndex);
+		writeSpaceOptimizedUInt32(stream, segment.totalSegments);
+		writeSpaceOptimizedUInt32(stream, segment.segmentNumber);
+		writeString(stream, segment.payload);
 	}
 }
 

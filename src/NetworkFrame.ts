@@ -1,5 +1,8 @@
 import { NetworkMessageType } from "./network_message";
-import type { WritableStream, ReadableStream } from "./stream";
+import {
+	ReadableStream, WritableStream,
+	readUInt8, readUInt16, readBuffer, writeUInt8, writeUInt16, writeBuffer
+} from "./stream";
 
 
 const alwaysHasMessageIdTypes = new Map([
@@ -20,7 +23,7 @@ export default class NetworkFrame {
 	) { }
 
 	static read(stream: ReadableStream) {
-		const flags = stream.readUInt8();
+		const flags = readUInt8(stream);
 		const messageType = flags & 0x1f;
 		const random = Boolean(flags & 0x20);
 		const fragmented = Boolean(flags & 0x40);
@@ -30,23 +33,23 @@ export default class NetworkFrame {
 		let fragmentNumber = 0;
 		let confirmRecords: [number, number][] = [];
 		if (fragmented || alwaysHasMessageIdTypes.get(messageType)) {
-			const messageIdAndConfirmFlag = stream.readUInt16();
+			const messageIdAndConfirmFlag = readUInt16(stream);
 			messageId = messageIdAndConfirmFlag & 0x7fff;
 			const hasConfirm = Boolean(messageIdAndConfirmFlag & 0x8000);
 
 			if (fragmented) {
-				fragmentNumber = stream.readUInt8();
+				fragmentNumber = readUInt8(stream);
 			}
 
 			if (hasConfirm) {
-				let confirmCount = stream.readUInt8();
+				let confirmCount = readUInt8(stream);
 				for (let i = 0; i < confirmCount; i++) {
-					confirmRecords.push([stream.readUInt16(), stream.readUInt16()]);
+					confirmRecords.push([readUInt16(stream), readUInt16(stream)]);
 				}
 			}
 		}
 
-		let messageData = stream.readBuffer();
+		let messageData = readBuffer(stream);
 		return new NetworkFrame(
 			messageType,
 			messageData,
@@ -64,26 +67,26 @@ export default class NetworkFrame {
 		flags |= Number(this.random) * 0x20;
 		flags |= Number(this.fragmented) * 0x40;
 		flags |= Number(this.lastFragment) * 0x80;
-		stream.writeUInt8(flags);
+		writeUInt8(stream, flags);
 
 		if (this.fragmented || alwaysHasMessageIdTypes.get(this.messageType)) {
 			const hasConfirm = this.confirmRecords.length > 0;
-			stream.writeUInt16(this.messageId | Number(hasConfirm) * 0x8000);
+			writeUInt16(stream, this.messageId | Number(hasConfirm) * 0x8000);
 
 			if (this.fragmented) {
-				stream.writeUInt8(this.fragmentNumber);
+				writeUInt8(stream, this.fragmentNumber);
 			}
 
 			if (hasConfirm) {
-				stream.writeUInt8(this.confirmRecords.length);
+				writeUInt8(stream, this.confirmRecords.length);
 				for (let confirmRecord of this.confirmRecords) {
-					stream.writeUInt16(confirmRecord[0]);
-					stream.writeUInt16(confirmRecord[1]);
+					writeUInt16(stream, confirmRecord[0]);
+					writeUInt16(stream, confirmRecord[1]);
 				}
 			}
 		}
 
-		stream.writeBuffer(this.messageData);
+		writeBuffer(stream, this.messageData);
 	}
 }
 

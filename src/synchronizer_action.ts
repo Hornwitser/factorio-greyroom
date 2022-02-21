@@ -1,4 +1,8 @@
-import { DecodeError, ReadableStream, WritableStream } from "./stream";
+import {
+	DecodeError, ReadableStream, EncodeError, WritableStream, Streamable,
+	readBool, readUInt8, readUInt16, readUInt32, readUtf8String, readArray, readMap,
+	writeBool, writeUInt8, writeUInt16, writeUInt32, writeUtf8String, writeArray, writeMap,
+} from "./stream";
 import { DisconnectReason, readSmallProgress, writeSmallProgress, SmallProgress } from "./data";
 
 
@@ -30,7 +34,7 @@ export enum SynchronizerActionType {
 
 export abstract class AbstractSynchronizerAction {
 	abstract type: SynchronizerActionType;
-	abstract write(stream: WritableStream, isServer: boolean): void
+	abstract peerID?: number;
 }
 
 
@@ -40,17 +44,11 @@ export class GameEnd implements AbstractSynchronizerAction {
 		public peerID?: number,
 	) { }
 
-	static read(stream: ReadableStream, isServer: boolean) {
-		return new GameEnd(
-			isServer ? stream.readUInt16() : undefined,
-		);
+	static read() {
+		return new GameEnd();
 	}
 
-	write(stream: WritableStream, isServer: boolean) {
-		if (isServer) {
-			stream.writeUInt16(this.peerID!);
-		}
-	}
+	static write() { }
 }
 
 
@@ -61,18 +59,14 @@ export class PeerDisconnect implements AbstractSynchronizerAction {
 		public peerID?: number,
 	) { }
 
-	static read(stream: ReadableStream, isServer: boolean) {
+	static read(stream: ReadableStream) {
 		return new PeerDisconnect(
-			stream.readUInt8(),
-			isServer ? stream.readUInt16() : undefined,
+			readUInt8(stream),
 		);
 	}
 
-	write(stream: WritableStream, isServer: boolean) {
-		stream.writeUInt8(this.reason);
-		if (isServer) {
-			stream.writeUInt16(this.peerID!);
-		}
+	static write(stream: WritableStream, action: PeerDisconnect) {
+		writeUInt8(stream, action.reason);
 	}
 }
 
@@ -84,18 +78,14 @@ export class NewPeerInfo implements AbstractSynchronizerAction {
 		public peerID?: number,
 	) { }
 
-	static read(stream: ReadableStream, isServer: boolean) {
+	static read(stream: ReadableStream) {
 		return new NewPeerInfo(
-			stream.readUtf8String(),
-			isServer ? stream.readUInt16() : undefined,
+			readUtf8String(stream),
 		);
 	}
 
-	write(stream: WritableStream, isServer: boolean) {
-		stream.writeUtf8String(this.username);
-		if (isServer) {
-			stream.writeUInt16(this.peerID!);
-		}
+	static write(stream: WritableStream, action: NewPeerInfo) {
+		writeUtf8String(stream, action.username);
 	}
 }
 
@@ -131,18 +121,14 @@ export class ClientChangedState implements AbstractSynchronizerAction {
 		public peerID?: number,
 	) { }
 
-	static read(stream: ReadableStream, isServer: boolean) {
+	static read(stream: ReadableStream) {
 		return new ClientChangedState(
-			stream.readUInt8(),
-			isServer ? stream.readUInt16() : undefined,
+			readUInt8(stream),
 		);
 	}
 
-	write(stream: WritableStream, isServer: boolean) {
-		stream.writeUInt8(this.newState);
-		if (isServer) {
-			stream.writeUInt16(this.peerID!);
-		}
+	static write(stream: WritableStream, action: ClientChangedState) {
+		writeUInt8(stream, action.newState);
 	}
 }
 
@@ -154,18 +140,14 @@ export class ClientShouldStartSendingTickClosures implements AbstractSynchronize
 		public peerID?: number,
 	) { }
 
-	static read(stream: ReadableStream, isServer: boolean) {
+	static read(stream: ReadableStream) {
 		return new ClientShouldStartSendingTickClosures(
-			stream.readUInt32(),
-			isServer ? stream.readUInt16() : undefined,
+			readUInt32(stream),
 		);
 	}
 
-	write(stream: WritableStream, isServer: boolean) {
-		stream.writeUInt32(this.firstExpectedTickClosureTick);
-		if (isServer) {
-			stream.writeUInt16(this.peerID!);
-		}
+	static write(stream: WritableStream, action: ClientShouldStartSendingTickClosures) {
+		writeUInt32(stream, action.firstExpectedTickClosureTick);
 	}
 }
 
@@ -358,25 +340,25 @@ export class ScriptRegistration {
 
 	static read(stream: ReadableStream) {
 		return new ScriptRegistration(
-			stream.readArray(stream => stream.readUInt32()),
-			stream.readArray(stream => stream.readUInt32()),
-			stream.readArray(stream => [stream.readUInt32(), stream.readUInt32()]),
-			stream.readBool(),
-			stream.readBool(),
-			stream.readBool(),
+			readArray(stream, readUInt32),
+			readArray(stream, readUInt32),
+			readArray(stream, stream => [readUInt32(stream), readUInt32(stream)]),
+			readBool(stream),
+			readBool(stream),
+			readBool(stream),
 		);
 	}
 
-	write(stream: WritableStream) {
-		stream.writeArray(this.standardEvents, (item, stream) => { stream.writeUInt32(item); });
-		stream.writeArray(this.nthTickEvents, (item, stream) => { stream.writeUInt32(item); });
-		stream.writeArray(this.standardEventFilters, (item, stream) => {
-			stream.writeUInt32(item[0]);
-			stream.writeUInt32(item[1]);
+	static write(stream: WritableStream, reg: ScriptRegistration) {
+		writeArray(stream, reg.standardEvents, writeUInt32);
+		writeArray(stream, reg.nthTickEvents, writeUInt32);
+		writeArray(stream, reg.standardEventFilters, (stream, item) => {
+			writeUInt32(stream, item[0]);
+			writeUInt32(stream, item[1]);
 		});
-		stream.writeBool(this.onInit);
-		stream.writeBool(this.onLoad);
-		stream.writeBool(this.onConfigurationChanged);
+		writeBool(stream, reg.onInit);
+		writeBool(stream, reg.onLoad);
+		writeBool(stream, reg.onConfigurationChanged);
 	}
 }
 
@@ -396,58 +378,40 @@ export class MapReadyForDownload implements AbstractSynchronizerAction {
 		public peerID?: number,
 	) { }
 
-	static read(stream: ReadableStream, isServer: boolean) {
+	static read(stream: ReadableStream) {
 		return new MapReadyForDownload(
-			stream.readUInt32(),
-			stream.readUInt32(),
-			stream.readUInt32(),
-			stream.readUInt32(),
-			stream.readUInt32(),
-			stream.readBool(),
-			stream.readBool(),
-			stream.readMap(
-				stream => stream.readUtf8String(),
-				stream => stream.readUInt32(),
+			readUInt32(stream),
+			readUInt32(stream),
+			readUInt32(stream),
+			readUInt32(stream),
+			readUInt32(stream),
+			readBool(stream),
+			readBool(stream),
+			readMap(stream, readUtf8String, readUInt32),
+			readMap(stream, readUtf8String, ScriptRegistration.read),
+			readMap(stream, readUtf8String,
+				stream => readArray(stream, readUtf8String),
 			),
-			stream.readMap(
-				stream => stream.readUtf8String(),
-				stream => ScriptRegistration.read(stream),
-			),
-			stream.readMap(
-				stream => stream.readUtf8String(),
-				stream => stream.readArray(stream => stream.readUtf8String()),
-			),
-			isServer ? stream.readUInt16() : undefined,
 		);
 	}
 
-	write(stream: WritableStream, isServer: boolean) {
-		stream.writeUInt32(this.size);
-		stream.writeUInt32(this.crc);
-		stream.writeUInt32(this.updateTick);
-		stream.writeUInt32(this.autosaveInterval);
-		stream.writeUInt32(this.autosaveSlots);
-		stream.writeBool(this.autosaveOnlyOnServer);
-		stream.writeBool(this.nonBlockingSaving);
-		stream.writeMap(
-			this.scriptChecksums,
-			(key, stream) => { stream.writeUtf8String(key); },
-			(value, stream) => { stream.writeUInt32(value); },
-		),
-		stream.writeMap(
-			this.scriptEvents,
-			(key, stream) => { stream.writeUtf8String(key); },
-		),
-		stream.writeMap(
-			this.scriptCommands,
-			(key, stream) => { stream.writeUtf8String(key); },
-			(value, stream) => {
-				stream.writeArray(value, (item, stream) => stream.writeUtf8String(item));
+	static write(stream: WritableStream, action: MapReadyForDownload) {
+		writeUInt32(stream, action.size);
+		writeUInt32(stream, action.crc);
+		writeUInt32(stream, action.updateTick);
+		writeUInt32(stream, action.autosaveInterval);
+		writeUInt32(stream, action.autosaveSlots);
+		writeBool(stream, action.autosaveOnlyOnServer);
+		writeBool(stream, action.nonBlockingSaving);
+		writeMap(stream, action.scriptChecksums, writeUtf8String, writeUInt32),
+		writeMap(stream, action.scriptEvents, writeUtf8String, ScriptRegistration.write),
+		writeMap(stream,
+			action.scriptCommands,
+			writeUtf8String,
+			(stream, value) => {
+				writeArray(stream, value, writeUtf8String);
 			},
 		);
-		if (isServer) {
-			stream.writeUInt16(this.peerID!);
-		}
 	}
 }
 
@@ -459,18 +423,14 @@ export class MapLoadingProgressUpdate implements AbstractSynchronizerAction {
 		public peerID?: number,
 	) { }
 
-	static read(stream: ReadableStream, isServer: boolean) {
+	static read(stream: ReadableStream) {
 		return new MapLoadingProgressUpdate(
 			readSmallProgress(stream),
-			isServer ? stream.readUInt16() : undefined,
 		);
 	}
 
-	write(stream: WritableStream, isServer: boolean) {
-		writeSmallProgress(this.progress, stream);
-		if (isServer) {
-			stream.writeUInt16(this.peerID!);
-		}
+	static write(stream: WritableStream, action: MapLoadingProgressUpdate) {
+		writeSmallProgress(stream, action.progress);
 	}
 }
 
@@ -482,18 +442,14 @@ export class MapSavingProgressUpdate implements AbstractSynchronizerAction {
 		public peerID?: number,
 	) { }
 
-	static read(stream: ReadableStream, isServer: boolean) {
+	static read(stream: ReadableStream) {
 		return new MapSavingProgressUpdate(
 			readSmallProgress(stream),
-			isServer ? stream.readUInt16() : undefined,
 		);
 	}
 
-	write(stream: WritableStream, isServer: boolean) {
-		writeSmallProgress(this.progress, stream);
-		if (isServer) {
-			stream.writeUInt16(this.peerID!);
-		}
+	static write(stream: WritableStream, action: MapSavingProgressUpdate) {
+		writeSmallProgress(stream, action.progress);
 	}
 }
 
@@ -504,17 +460,11 @@ export class SavingForUpdate implements AbstractSynchronizerAction {
 		public peerID?: number,
 	) { }
 
-	static read(stream: ReadableStream, isServer: boolean) {
-		return new SavingForUpdate(
-			isServer ? stream.readUInt16() : undefined,
-		);
+	static read() {
+		return new SavingForUpdate();
 	}
 
-	write(stream: WritableStream, isServer: boolean) {
-		if (isServer) {
-			stream.writeUInt16(this.peerID!);
-		}
-	}
+	static write() { }
 }
 
 
@@ -525,18 +475,14 @@ export class MapDownloadingProgressUpdate implements AbstractSynchronizerAction 
 		public peerID?: number,
 	) { }
 
-	static read(stream: ReadableStream, isServer: boolean) {
+	static read(stream: ReadableStream) {
 		return new MapDownloadingProgressUpdate(
 			readSmallProgress(stream),
-			isServer ? stream.readUInt16() : undefined,
 		);
 	}
 
-	write(stream: WritableStream, isServer: boolean) {
-		writeSmallProgress(this.progress, stream);
-		if (isServer) {
-			stream.writeUInt16(this.peerID!);
-		}
+	static write(stream: WritableStream, action: MapDownloadingProgressUpdate) {
+		writeSmallProgress(stream, action.progress);
 	}
 }
 
@@ -548,18 +494,14 @@ export class CatchingUpProgressUpdate implements AbstractSynchronizerAction {
 		public peerID?: number,
 	) { }
 
-	static read(stream: ReadableStream, isServer: boolean) {
+	static read(stream: ReadableStream) {
 		return new CatchingUpProgressUpdate(
 			readSmallProgress(stream),
-			isServer ? stream.readUInt16() : undefined,
 		);
 	}
 
-	write(stream: WritableStream, isServer: boolean) {
-		writeSmallProgress(this.progress, stream);
-		if (isServer) {
-			stream.writeUInt16(this.peerID!);
-		}
+	static write(stream: WritableStream, action: CatchingUpProgressUpdate) {
+		writeSmallProgress(stream, action.progress);
 	}
 }
 
@@ -571,18 +513,14 @@ export class PeerDroppingProgressUpdate implements AbstractSynchronizerAction {
 		public peerID?: number,
 	) { }
 
-	static read(stream: ReadableStream, isServer: boolean) {
+	static read(stream: ReadableStream) {
 		return new PeerDroppingProgressUpdate(
 			readSmallProgress(stream),
-			isServer ? stream.readUInt16() : undefined,
 		);
 	}
 
-	write(stream: WritableStream, isServer: boolean) {
-		writeSmallProgress(this.progress, stream);
-		if (isServer) {
-			stream.writeUInt16(this.peerID!);
-		}
+	static write(stream: WritableStream, action: PeerDroppingProgressUpdate) {
+		writeSmallProgress(stream, action.progress);
 	}
 }
 
@@ -593,17 +531,11 @@ export class PlayerDesynced implements AbstractSynchronizerAction {
 		public peerID?: number,
 	) { }
 
-	static read(stream: ReadableStream, isServer: boolean) {
-		return new PlayerDesynced(
-			isServer ? stream.readUInt16() : undefined,
-		);
+	static read() {
+		return new PlayerDesynced();
 	}
 
-	write(stream: WritableStream, isServer: boolean) {
-		if (isServer) {
-			stream.writeUInt16(this.peerID!);
-		}
-	}
+	static write() { }
 }
 
 
@@ -613,17 +545,11 @@ export class BeginPause implements AbstractSynchronizerAction {
 		public peerID?: number,
 	) { }
 
-	static read(stream: ReadableStream, isServer: boolean) {
-		return new BeginPause(
-			isServer ? stream.readUInt16() : undefined,
-		);
+	static read() {
+		return new BeginPause();
 	}
 
-	write(stream: WritableStream, isServer: boolean) {
-		if (isServer) {
-			stream.writeUInt16(this.peerID!);
-		}
-	}
+	static write() { }
 }
 
 
@@ -633,17 +559,11 @@ export class EndPause implements AbstractSynchronizerAction {
 		public peerID?: number,
 	) { }
 
-	static read(stream: ReadableStream, isServer: boolean) {
-		return new EndPause(
-			isServer ? stream.readUInt16() : undefined,
-		);
+	static read() {
+		return new EndPause();
 	}
 
-	write(stream: WritableStream, isServer: boolean) {
-		if (isServer) {
-			stream.writeUInt16(this.peerID!);
-		}
-	}
+	static write() { }
 }
 
 
@@ -654,18 +574,14 @@ export class ChangeLatency implements AbstractSynchronizerAction {
 		public peerID?: number,
 	) { }
 
-	static read(stream: ReadableStream, isServer: boolean) {
+	static read(stream: ReadableStream) {
 		return new ChangeLatency(
-			stream.readUInt8(),
-			isServer ? stream.readUInt16() : undefined,
+			readUInt8(stream),
 		);
 	}
 
-	write(stream: WritableStream, isServer: boolean) {
-		stream.writeUInt8(this.latency);
-		if (isServer) {
-			stream.writeUInt16(this.peerID!);
-		}
+	static write(stream: WritableStream, action: ChangeLatency) {
+		writeUInt8(stream, action.latency);
 	}
 }
 
@@ -678,20 +594,16 @@ export class IncreasedLatencyConfirm implements AbstractSynchronizerAction {
 		public peerID?: number,
 	) { }
 
-	static read(stream: ReadableStream, isServer: boolean) {
+	static read(stream: ReadableStream) {
 		return new IncreasedLatencyConfirm(
-			stream.readUInt32(),
-			stream.readUInt8(),
-			isServer ? stream.readUInt16() : undefined,
+			readUInt32(stream),
+			readUInt8(stream),
 		);
 	}
 
-	write(stream: WritableStream, isServer: boolean) {
-		stream.writeUInt32(this.firstTickToSkip);
-		stream.writeUInt8(this.ticksToSkip);
-		if (isServer) {
-			stream.writeUInt16(this.peerID!);
-		}
+	static write(stream: WritableStream, action: IncreasedLatencyConfirm) {
+		writeUInt32(stream, action.firstTickToSkip);
+		writeUInt8(stream, action.ticksToSkip);
 	}
 }
 
@@ -704,20 +616,16 @@ export class SavingCountDown implements AbstractSynchronizerAction {
 		public peerID?: number,
 	) { }
 
-	static read(stream: ReadableStream, isServer: boolean) {
+	static read(stream: ReadableStream) {
 		return new SavingCountDown(
-			stream.readUInt32(),
-			stream.readUInt32(),
-			isServer ? stream.readUInt16() : undefined,
+			readUInt32(stream),
+			readUInt32(stream),
 		);
 	}
 
-	write(stream: WritableStream, isServer: boolean) {
-		stream.writeUInt32(this.ticksToFinish);
-		stream.writeUInt32(this.playersInQueue);
-		if (isServer) {
-			stream.writeUInt16(this.peerID!);
-		}
+	static write(stream: WritableStream, action: SavingCountDown) {
+		writeUInt32(stream, action.ticksToFinish);
+		writeUInt32(stream, action.playersInQueue);
 	}
 }
 
@@ -730,20 +638,16 @@ export class AuxiliaryDataReadyForDownload implements AbstractSynchronizerAction
 		public peerID?: number,
 	) { }
 
-	static read(stream: ReadableStream, isServer: boolean) {
+	static read(stream: ReadableStream) {
 		return new AuxiliaryDataReadyForDownload(
-			stream.readUInt32(),
-			stream.readUInt32(),
-			isServer ? stream.readUInt16() : undefined,
+			readUInt32(stream),
+			readUInt32(stream),
 		);
 	}
 
-	write(stream: WritableStream, isServer: boolean) {
-		stream.writeUInt32(this.size);
-		stream.writeUInt32(this.crc);
-		if (isServer) {
-			stream.writeUInt16(this.peerID!);
-		}
+	static write(stream: WritableStream, action: AuxiliaryDataReadyForDownload) {
+		writeUInt32(stream, action.size);
+		writeUInt32(stream, action.crc);
 	}
 }
 
@@ -754,17 +658,11 @@ export class AuxiliaryDataDownloadFinished implements AbstractSynchronizerAction
 		public peerID?: number,
 	) { }
 
-	static read(stream: ReadableStream, isServer: boolean) {
-		return new AuxiliaryDataDownloadFinished(
-			isServer ? stream.readUInt16() : undefined,
-		);
+	static read() {
+		return new AuxiliaryDataDownloadFinished();
 	}
 
-	write(stream: WritableStream, isServer: boolean) {
-		if (isServer) {
-			stream.writeUInt16(this.peerID!);
-		}
-	}
+	static write() { }
 }
 
 
@@ -791,11 +689,7 @@ export type SynchronizerAction =
 	AuxiliaryDataDownloadFinished
 ;
 
-export interface SynchronizerActionClass {
-	read(stream: ReadableStream, isServer: boolean): SynchronizerAction;
-}
-
-export const SynchronizerActionTypeToClass = new Map<SynchronizerActionType, SynchronizerActionClass>([
+export const SynchronizerActionTypeToClass = new Map<SynchronizerActionType, Streamable<SynchronizerAction>>([
 	[SynchronizerActionType.GameEnd, GameEnd],
 	[SynchronizerActionType.PeerDisconnect, PeerDisconnect],
 	[SynchronizerActionType.NewPeerInfo, NewPeerInfo],
@@ -821,7 +715,7 @@ export const SynchronizerActionTypeToClass = new Map<SynchronizerActionType, Syn
 ]);
 
 export function readSynchronizerAction(stream: ReadableStream, isServer: boolean): SynchronizerAction {
-	const type: SynchronizerActionType = stream.readUInt8();
+	const type: SynchronizerActionType = readUInt8(stream);
 	const synchronizerClass = SynchronizerActionTypeToClass.get(type);
 	if (!synchronizerClass) {
 		throw new DecodeError(
@@ -829,15 +723,30 @@ export function readSynchronizerAction(stream: ReadableStream, isServer: boolean
 			{ stream, synchronizerActionType: type }
 		);
 	}
-	return synchronizerClass.read(stream, isServer) as SynchronizerAction;
+	const action = synchronizerClass.read(stream);
+	if (isServer) {
+		action.peerID = readUInt16(stream);
+	}
+	return action;
 }
 
 export function writeSynchronizerAction(
-	synchronizerAction: SynchronizerAction,
 	stream: WritableStream,
+	synchronizerAction: SynchronizerAction,
 	isServer: boolean
 ) {
-	stream.writeUInt8(synchronizerAction.type);
-	synchronizerAction.write(stream, isServer);
+	const type = synchronizerAction.type;
+	const synchronizerClass = SynchronizerActionTypeToClass.get(type);
+	if (!synchronizerClass) {
+		throw new EncodeError(
+			`Unencoded SynchronizerAction type ${SynchronizerActionType[type]} (${type})`,
+			{ stream, synchronizerActionType: type }
+		);
+	}
+	writeUInt8(stream, type);
+	synchronizerClass.write(stream, synchronizerAction);
+	if (isServer) {
+		writeUInt16(stream, synchronizerAction.peerID!);
+	}
 }
 

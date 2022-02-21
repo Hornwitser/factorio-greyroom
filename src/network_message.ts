@@ -1,4 +1,10 @@
-import { ReadableStream, Readable, WritableStream } from "./stream";
+import {
+	ReadableStream, WritableStream, Streamable,
+	readUInt8, readUInt16, readUInt32, readSpaceOptimizedUInt16, readSpaceOptimizedUInt32,
+	readBuffer, readUtf8String, readArray, readMap,
+	writeUInt8, writeUInt16, writeUInt32, writeSpaceOptimizedUInt16, writeSpaceOptimizedUInt32,
+	writeBuffer, writeUtf8String, writeArray, writeMap,
+} from "./stream";
 import { InputAction, InputActionSegment } from "./input";
 import { Version, ModID, ModStartupSetting, SmallProgress, readSmallProgress, writeSmallProgress } from "./data";
 import { SynchronizerAction, readSynchronizerAction, writeSynchronizerAction } from "./synchronizer_action";
@@ -27,7 +33,6 @@ export enum NetworkMessageType {
 
 export abstract class AbstractNetworkMessage {
 	abstract type: NetworkMessageType;
-	abstract write(stream: WritableStream): void;
 }
 
 export class ConnectionRequest implements AbstractNetworkMessage {
@@ -40,13 +45,13 @@ export class ConnectionRequest implements AbstractNetworkMessage {
 	static read(stream: ReadableStream) {
 		return new ConnectionRequest(
 			Version.read(stream),
-			stream.readUInt32(),
+			readUInt32(stream),
 		);
 	}
 
-	write(stream: WritableStream) {
-		this.version.write(stream);
-		stream.writeUInt32(this.connectionRequestIDGeneratedOnClient);
+	static write(stream: WritableStream, message: ConnectionRequest) {
+		Version.write(stream, message.version);
+		writeUInt32(stream, message.connectionRequestIDGeneratedOnClient);
 	}
 }
 
@@ -61,15 +66,15 @@ export class ConnectionRequestReply implements AbstractNetworkMessage {
 	static read(stream: ReadableStream) {
 		return new ConnectionRequestReply(
 			Version.read(stream),
-			stream.readUInt32(),
-			stream.readUInt32(),
+			readUInt32(stream),
+			readUInt32(stream),
 		);
 	}
 
-	write(stream: WritableStream) {
-		this.version.write(stream);
-		stream.writeUInt32(this.connectionRequestIDGeneratedOnClient);
-		stream.writeUInt32(this.connectionRequestIDGeneratedOnServer);
+	static write(stream: WritableStream, message: ConnectionRequestReply) {
+		Version.write(stream, message.version);
+		writeUInt32(stream, message.connectionRequestIDGeneratedOnClient);
+		writeUInt32(stream, message.connectionRequestIDGeneratedOnServer);
 	}
 }
 
@@ -92,32 +97,32 @@ export class ConnectionRequestReplyConfirm implements AbstractNetworkMessage {
 
 	static read(stream: ReadableStream) {
 		return new ConnectionRequestReplyConfirm(
-			stream.readUInt32(),
-			stream.readUInt32(),
-			stream.readUInt32(),
-			stream.readUtf8String(),
-			stream.readUtf8String(),
-			stream.readUtf8String(),
-			stream.readUtf8String(),
-			stream.readUInt32(),
-			stream.readUInt32(),
-			stream.readArray(stream => ModID.read(stream)),
-			stream.readArray(stream => ModStartupSetting.read(stream))
+			readUInt32(stream),
+			readUInt32(stream),
+			readUInt32(stream),
+			readUtf8String(stream),
+			readUtf8String(stream),
+			readUtf8String(stream),
+			readUtf8String(stream),
+			readUInt32(stream),
+			readUInt32(stream),
+			readArray(stream, ModID.read),
+			readArray(stream, ModStartupSetting.read)
 		);
 	}
 
-	write(stream: WritableStream) {
-		stream.writeUInt32(this.connectionRequestIDGeneratedOnClient);
-		stream.writeUInt32(this.connectionRequestIDGeneratedOnServer);
-		stream.writeUInt32(this.instanceID);
-		stream.writeUtf8String(this.username);
-		stream.writeUtf8String(this.passwordHash);
-		stream.writeUtf8String(this.serverKey);
-		stream.writeUtf8String(this.serverKeyTimestamp);
-		stream.writeUInt32(this.coreChecksum);
-		stream.writeUInt32(this.prototypeListChecksum);
-		stream.writeArray(this.activeMods);
-		stream.writeArray(this.startupModSettings);
+	static write(stream: WritableStream, message: ConnectionRequestReplyConfirm) {
+		writeUInt32(stream, message.connectionRequestIDGeneratedOnClient);
+		writeUInt32(stream, message.connectionRequestIDGeneratedOnServer);
+		writeUInt32(stream, message.instanceID);
+		writeUtf8String(stream, message.username);
+		writeUtf8String(stream, message.passwordHash);
+		writeUtf8String(stream, message.serverKey);
+		writeUtf8String(stream, message.serverKeyTimestamp);
+		writeUInt32(stream, message.coreChecksum);
+		writeUInt32(stream, message.prototypeListChecksum);
+		writeArray(stream, message.activeMods, ModID.write);
+		writeArray(stream, message.startupModSettings, ModStartupSetting.write);
 	}
 }
 
@@ -133,8 +138,8 @@ export class ClientPeerInfo {
 	) { }
 
 	static read(stream: ReadableStream) {
-		const username = stream.readUtf8String();
-		const flags = stream.readUInt8();
+		const username = readUtf8String(stream);
+		const flags = readUInt8(stream);
 		let droppingProgress = null;
 		let mapSavingProgress = null;
 		let mapDownloadingProgress = null;
@@ -155,31 +160,31 @@ export class ClientPeerInfo {
 		);
 	}
 
-	write(stream: WritableStream) {
-		stream.writeUtf8String(this.username);
+	static write(stream: WritableStream, info: ClientPeerInfo) {
+		writeUtf8String(stream, info.username);
 
 		let flags = 0;
-		if (this.droppingProgress !== null) { flags |= 0x01; }
-		if (this.mapSavingProgress !== null) { flags |= 0x02; }
-		if (this.mapDownloadingProgress !== null) { flags |= 0x04; }
-		if (this.mapLoadingProgress !== null) { flags |= 0x08; }
-		if (this.tryingToCatchUpProgress !== null) { flags |= 0x10; }
+		if (info.droppingProgress !== null) { flags |= 0x01; }
+		if (info.mapSavingProgress !== null) { flags |= 0x02; }
+		if (info.mapDownloadingProgress !== null) { flags |= 0x04; }
+		if (info.mapLoadingProgress !== null) { flags |= 0x08; }
+		if (info.tryingToCatchUpProgress !== null) { flags |= 0x10; }
 
-		stream.writeUInt8(flags);
-		if (this.droppingProgress !== null) {
-			writeSmallProgress(this.droppingProgress, stream);
+		writeUInt8(stream, flags);
+		if (info.droppingProgress !== null) {
+			writeSmallProgress(stream, info.droppingProgress);
 		}
-		if (this.mapSavingProgress !== null) {
-			writeSmallProgress(this.mapSavingProgress, stream);
+		if (info.mapSavingProgress !== null) {
+			writeSmallProgress(stream, info.mapSavingProgress);
 		}
-		if (this.mapDownloadingProgress !== null) {
-			writeSmallProgress(this.mapDownloadingProgress, stream);
+		if (info.mapDownloadingProgress !== null) {
+			writeSmallProgress(stream, info.mapDownloadingProgress);
 		}
-		if (this.mapLoadingProgress !== null) {
-			writeSmallProgress(this.mapLoadingProgress, stream);
+		if (info.mapLoadingProgress !== null) {
+			writeSmallProgress(stream, info.mapLoadingProgress);
 		}
-		if (this.tryingToCatchUpProgress !== null) {
-			writeSmallProgress(this.tryingToCatchUpProgress, stream);
+		if (info.tryingToCatchUpProgress !== null) {
+			writeSmallProgress(stream, info.tryingToCatchUpProgress);
 		}
 	}
 }
@@ -195,31 +200,18 @@ export class ClientsPeerInfo {
 
 	static read(stream: ReadableStream) {
 		return new ClientsPeerInfo(
-			stream.readUtf8String(),
+			readUtf8String(stream),
 			readSmallProgress(stream),
-			stream.readArray(
-				stream => stream.readSpaceOptimizedUInt16(),
-				stream => stream.readSpaceOptimizedUInt16(),
-			),
-			stream.readMap(
-				stream => stream.readSpaceOptimizedUInt16(),
-				stream => ClientPeerInfo.read(stream),
-			),
+			readArray(stream, readSpaceOptimizedUInt16, readSpaceOptimizedUInt16),
+			readMap(stream, readSpaceOptimizedUInt16, ClientPeerInfo.read),
 		);
 	}
 
-	write(stream: WritableStream) {
-		stream.writeUtf8String(this.serverUsername);
-		writeSmallProgress(this.mapSavingProgress, stream);
-		stream.writeArray(
-			this.savingFor,
-			(item, stream) => { stream.writeSpaceOptimizedUInt16(item) },
-			(size, stream) => { stream.writeSpaceOptimizedUInt16(size) },
-		);
-		stream.writeMap(
-			this.clientPeerInfo,
-			(key, stream) => { stream.writeSpaceOptimizedUInt16(key); }
-		);
+	static write(stream: WritableStream, infos: ClientsPeerInfo) {
+		writeUtf8String(stream, infos.serverUsername);
+		writeSmallProgress(stream, infos.mapSavingProgress);
+		writeArray(stream, infos.savingFor, writeSpaceOptimizedUInt16, writeSpaceOptimizedUInt16);
+		writeMap(stream, infos.clientPeerInfo, writeSpaceOptimizedUInt16, ClientPeerInfo.write);
 	}
 }
 
@@ -264,40 +256,40 @@ export class ConnectionAcceptOrDeny implements AbstractNetworkMessage {
 
 	static read(stream: ReadableStream) {
 		return new ConnectionAcceptOrDeny(
-			stream.readUInt32(),
-			stream.readUInt8(),
-			stream.readUtf8String(),
-			stream.readUtf8String(),
-			stream.readUtf8String(),
-			stream.readUInt8(),
-			stream.readUInt32(),
-			stream.readBuffer(8),
+			readUInt32(stream),
+			readUInt8(stream),
+			readUtf8String(stream),
+			readUtf8String(stream),
+			readUtf8String(stream),
+			readUInt8(stream),
+			readUInt32(stream),
+			readBuffer(stream, 8),
 			ClientsPeerInfo.read(stream),
-			stream.readUInt32(),
-			stream.readUInt32(),
-			stream.readUInt16(),
-			stream.readArray(stream => ModID.read(stream)),
-			stream.readArray(stream => ModStartupSetting.read(stream)),
-			stream.readUInt16(),
+			readUInt32(stream),
+			readUInt32(stream),
+			readUInt16(stream),
+			readArray(stream, ModID.read),
+			readArray(stream, ModStartupSetting.read),
+			readUInt16(stream),
 		);
 	}
 
-	write(stream: WritableStream) {
-		stream.writeUInt32(this.connectionRequestIDGeneratedOnClient);
-		stream.writeUInt8(this.status);
-		stream.writeUtf8String(this.gameName);
-		stream.writeUtf8String(this.serverHash);
-		stream.writeUtf8String(this.description);
-		stream.writeUInt8(this.latency);
-		stream.writeUInt32(this.gameID);
-		stream.writeBuffer(this.steamID);
-		this.clientsPeerInfo.write(stream);
-		stream.writeUInt32(this.firstSequenceNumberToExpect);
-		stream.writeUInt32(this.firstSequenceNumberToSend);
-		stream.writeUInt16(this.newPeerID);
-		stream.writeArray(this.activeMods);
-		stream.writeArray(this.startupModSettings);
-		stream.writeUInt16(this.pausedBy);
+	static write(stream: WritableStream, message: ConnectionAcceptOrDeny) {
+		writeUInt32(stream, message.connectionRequestIDGeneratedOnClient);
+		writeUInt8(stream, message.status);
+		writeUtf8String(stream, message.gameName);
+		writeUtf8String(stream, message.serverHash);
+		writeUtf8String(stream, message.description);
+		writeUInt8(stream, message.latency);
+		writeUInt32(stream, message.gameID);
+		writeBuffer(stream, message.steamID);
+		ClientsPeerInfo.write(stream, message.clientsPeerInfo);
+		writeUInt32(stream, message.firstSequenceNumberToExpect);
+		writeUInt32(stream, message.firstSequenceNumberToSend);
+		writeUInt16(stream, message.newPeerID);
+		writeArray(stream, message.activeMods, ModID.write);
+		writeArray(stream, message.startupModSettings, ModStartupSetting.write);
+		writeUInt16(stream, message.pausedBy);
 	}
 }
 
@@ -310,7 +302,7 @@ export class TickClosure {
 	) { }
 
 	static read(stream: ReadableStream, isEmpty: boolean) {
-		const updateTick = stream.readUInt32();
+		const updateTick = readUInt32(stream);
 		if (isEmpty) {
 			return new TickClosure(
 				updateTick,
@@ -319,7 +311,7 @@ export class TickClosure {
 			);
 		}
 
-		const flags = stream.readSpaceOptimizedUInt32()
+		const flags = readSpaceOptimizedUInt32(stream)
 		const hasInputActionSegments = Boolean(flags & 0x1);
 		const inputActionCount = flags >> 1;
 		const inputActions = [];
@@ -333,9 +325,7 @@ export class TickClosure {
 
 		let inputActionSegments: InputActionSegment[] = [];
 		if (hasInputActionSegments) {
-			inputActionSegments = stream.readArray(
-				stream => InputActionSegment.read(stream)
-			);
+			inputActionSegments = readArray(stream, InputActionSegment.read);
 		}
 
 		return new TickClosure(
@@ -345,24 +335,24 @@ export class TickClosure {
 		)
 	}
 
-	write(stream: WritableStream, writeEmpty: boolean) {
-		stream.writeUInt32(this.updateTick);
+	static write(stream: WritableStream, closure: TickClosure, writeEmpty: boolean) {
+		writeUInt32(stream, closure.updateTick);
 		if (writeEmpty) {
 			return;
 		}
 
-		const hasInputActionSegments = this.inputActionSegments.length > 0;
-		const flags = Number(hasInputActionSegments) | this.inputActions.length << 1;
-		stream.writeSpaceOptimizedUInt32(flags);
+		const hasInputActionSegments = closure.inputActionSegments.length > 0;
+		const flags = Number(hasInputActionSegments) | closure.inputActions.length << 1;
+		writeSpaceOptimizedUInt32(stream, flags);
 
 		let lastPlayerIndex = 0xffff;
-		for (let inputAction of this.inputActions) {
-			inputAction.write(stream, lastPlayerIndex);
+		for (let inputAction of closure.inputActions) {
+			InputAction.write(stream, inputAction, lastPlayerIndex);
 			lastPlayerIndex = inputAction.playerIndex!;
 		}
 
 		if (hasInputActionSegments) {
-			stream.writeArray(this.inputActionSegments);
+			writeArray(stream, closure.inputActionSegments, InputActionSegment.write);
 		}
 	}
 }
@@ -378,19 +368,19 @@ export class Heartbeat {
 	) { }
 
 	static read(stream: ReadableStream, isServer: boolean) {
-		const flags = stream.readUInt8();
+		const flags = readUInt8(stream);
 		const hasHeartbeatRequests = Boolean(flags & 0x01);
 		const hasTickClosures = Boolean(flags & 0x02);
 		const hasSingleTickClosure = Boolean(flags & 0x04);
 		const allTickClosuresAreEmpty = Boolean(flags & 0x08);
 		const hasSynchronizerActions = Boolean(flags & 0x10);
 
-		const sequenceNumber = stream.readUInt32();
+		const sequenceNumber = readUInt32(stream);
 		const tickClosures = [];
 		if (hasTickClosures) {
 			let count = 1
 			if (!hasSingleTickClosure) {
-				count = stream.readSpaceOptimizedUInt32();
+				count = readSpaceOptimizedUInt32(stream);
 			}
 
 			for (let i = 0; i < count; i++) {
@@ -400,21 +390,19 @@ export class Heartbeat {
 
 		let nextToReceiveServerTickClosure = null;
 		if (!isServer) {
-			nextToReceiveServerTickClosure = stream.readUInt32();
+			nextToReceiveServerTickClosure = readUInt32(stream);
 		}
 
 		let synchronizerActions: SynchronizerAction[] = [];
 		if (hasSynchronizerActions) {
-			synchronizerActions = stream.readArray(
+			synchronizerActions = readArray(stream,
 				stream => readSynchronizerAction(stream, isServer)
 			);
 		}
 
 		let requestsForHeartbeat: number[] = [];
 		if (hasHeartbeatRequests) {
-			requestsForHeartbeat = stream.readArray(
-				stream => stream.readUInt32(),
-			);
+			requestsForHeartbeat = readArray(stream, readUInt32);
 		}
 
 		return new Heartbeat(
@@ -426,14 +414,14 @@ export class Heartbeat {
 		);
 	}
 
-	write(stream: WritableStream, isServer: boolean) {
-		const hasHeartbeatRequests = this.requestsForHeartbeat.length > 0;
-		const hasTickClosures = this.tickClosures.length > 0;
-		const hasSingleTickClosure = this.tickClosures.length == 1;
-		const allTickClosuresAreEmpty = hasTickClosures && this.tickClosures.filter(
+	static write(stream: WritableStream, heartbeat: Heartbeat, isServer: boolean) {
+		const hasHeartbeatRequests = heartbeat.requestsForHeartbeat.length > 0;
+		const hasTickClosures = heartbeat.tickClosures.length > 0;
+		const hasSingleTickClosure = heartbeat.tickClosures.length == 1;
+		const allTickClosuresAreEmpty = hasTickClosures && heartbeat.tickClosures.filter(
 			tickClosure => tickClosure.inputActions.length > 0 || tickClosure.inputActionSegments.length > 0
 		).length === 0;
-		const hasSynchronizerActions = this.synchronizerActions.length > 0;
+		const hasSynchronizerActions = heartbeat.synchronizerActions.length > 0;
 
 		let flags = 0;
 		flags |= Number(hasHeartbeatRequests) * 0x01;
@@ -441,36 +429,33 @@ export class Heartbeat {
 		flags |= Number(hasSingleTickClosure) * 0x04;
 		flags |= Number(allTickClosuresAreEmpty) * 0x08;
 		flags |= Number(hasSynchronizerActions) * 0x10;
-		stream.writeUInt8(flags);
-		stream.writeUInt32(this.sequenceNumber);
+		writeUInt8(stream, flags);
+		writeUInt32(stream, heartbeat.sequenceNumber);
 
 		if (hasTickClosures) {
 			if (hasSingleTickClosure) {
-				this.tickClosures[0].write(stream, allTickClosuresAreEmpty);
+				TickClosure.write(stream, heartbeat.tickClosures[0], allTickClosuresAreEmpty);
 			} else {
-				stream.writeSpaceOptimizedUInt32(this.tickClosures.length);
-				for (let tickClosure of this.tickClosures) {
-					tickClosure.write(stream, allTickClosuresAreEmpty);
+				writeSpaceOptimizedUInt32(stream, heartbeat.tickClosures.length);
+				for (let tickClosure of heartbeat.tickClosures) {
+					TickClosure.write(stream, tickClosure, allTickClosuresAreEmpty);
 				}
 			}
 		}
 
 		if (!isServer) {
-			stream.writeUInt32(this.nextToReceiveServerTickClosure!);
+			writeUInt32(stream, heartbeat.nextToReceiveServerTickClosure!);
 		}
 
 		if (hasSynchronizerActions) {
-			stream.writeArray(
-				this.synchronizerActions,
-				(item, stream) => { writeSynchronizerAction(item, stream, isServer); }
+			writeArray(stream,
+				heartbeat.synchronizerActions,
+				(stream, item) => { writeSynchronizerAction(stream, item, isServer); }
 			);
 		}
 
 		if (hasHeartbeatRequests) {
-			stream.writeArray(
-				this.requestsForHeartbeat,
-				(item, stream) => stream.writeUInt32(item),
-			);
+			writeArray(stream, heartbeat.requestsForHeartbeat, writeUInt32);
 		}
 	}
 }
@@ -485,8 +470,8 @@ export class ClientToServerHeartbeat implements AbstractNetworkMessage {
 		return new ClientToServerHeartbeat(Heartbeat.read(stream, false));
 	}
 
-	write(stream: WritableStream) {
-		this.heartbeat.write(stream, false);
+	static write(stream: WritableStream, message: ClientToServerHeartbeat) {
+		Heartbeat.write(stream, message.heartbeat, false);
 	}
 }
 
@@ -501,8 +486,8 @@ export class ServerToClientHeartbeat implements AbstractNetworkMessage {
 		return new ServerToClientHeartbeat(Heartbeat.read(stream, true));
 	}
 
-	write(stream: WritableStream) {
-		this.heartbeat.write(stream, true);
+	static write(stream: WritableStream, message: ServerToClientHeartbeat) {
+		Heartbeat.write(stream, message.heartbeat, true);
 	}
 }
 
@@ -515,8 +500,8 @@ export class Empty implements AbstractNetworkMessage {
 		return new Empty();
 	}
 
-	write(stream: WritableStream) {
-		void stream;
+	static write(stream: WritableStream, message: Empty) {
+		void stream, message;
 	}
 }
 
@@ -530,7 +515,7 @@ export type NetworkMessage =
 	Empty
 ;
 
-export const NetworkMessageTypeToClass = new Map<NetworkMessageType, Readable>([
+export const NetworkMessageTypeToClass = new Map<NetworkMessageType, Streamable<NetworkMessage>>([
 	// [NetworkMessageType.Ping, ...],
 	// [NetworkMessageType.PingReply, ...],
 	[NetworkMessageType.ConnectionRequest, ConnectionRequest],
