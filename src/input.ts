@@ -1,8 +1,8 @@
 import {
 	DecodeError, ReadableStream, EncodeError, WritableStream,
-	readBool, readUInt8, readUInt16, readUInt32,
+	readBool, readUInt8, readUInt16, readUInt32, readBuffer,
 	readSpaceOptimizedUInt16, readSpaceOptimizedUInt32, readString, readUtf8String,
-	writeBool, writeUInt8, writeUInt16, writeUInt32,
+	writeBool, writeUInt8, writeUInt16, writeUInt32, writeBuffer,
 	writeSpaceOptimizedUInt16, writeSpaceOptimizedUInt32, writeString, writeUtf8String,
 } from "./stream";
 import { Direction, DisconnectReason } from "./data";
@@ -265,11 +265,17 @@ export type PlayerJoinGameData = {
 	asEditor: boolean,
 	admin: boolean,
 }
+export type ServerCommandData = {
+	command: Buffer,
+	id: number,
+	connectionID: Buffer,
+}
 
 export type InputData =
 	Direction |
 	CrcData |
 	PlayerJoinGameData |
+	ServerCommandData |
 	DisconnectReason
 ;
 
@@ -283,8 +289,12 @@ export class InputAction {
 		public playerIndex?: number,
 	) { }
 
-	static read(stream: ReadableStream, lastPlayerIndex: number) {
+	static read(stream: ReadableStream, lastPlayerIndex: number = 0) {
 		const type = readUInt8(stream);
+		return this.readPayload(stream, type, lastPlayerIndex);
+	}
+
+	static readPayload(stream: ReadableStream, type: InputActionType, lastPlayerIndex: number = 0) {
 		const playerIndex = (readSpaceOptimizedUInt16(stream) + lastPlayerIndex) & 0xffff;
 
 		let data;
@@ -370,6 +380,14 @@ export class InputAction {
 				}
 				break;
 
+			case InputActionType.ServerCommand:
+				data = {
+					command: readString(stream),
+					id: readUInt32(stream),
+					connectionID: readBuffer(stream, 8),
+				}
+				break;
+
 			case InputActionType.PlayerLeaveGame:
 				data = readUInt8(stream);
 				break;
@@ -390,6 +408,10 @@ export class InputAction {
 
 	static write(stream: WritableStream, input: InputAction, lastPlayerIndex: number) {
 		writeUInt8(stream, input.type);
+		this.writePayload(stream, input, lastPlayerIndex);
+	}
+
+	static writePayload(stream: WritableStream, input: InputAction, lastPlayerIndex: number) {
 		writeSpaceOptimizedUInt16(stream, input.playerIndex! - lastPlayerIndex & 0xffff);
 
 		switch (input.type) {
@@ -475,6 +497,13 @@ export class InputAction {
 				writeUtf8String(stream, playerJoinData.username);
 				writeBool(stream, playerJoinData.asEditor);
 				writeBool(stream, playerJoinData.admin);
+				break;
+
+			case InputActionType.ServerCommand:
+				const serverCommandData = input.data! as ServerCommandData;
+				writeString(stream, serverCommandData.command);
+				writeUInt32(stream, serverCommandData.id);
+				writeBuffer(stream, serverCommandData.connectionID);
 				break;
 
 			case InputActionType.PlayerLeaveGame:

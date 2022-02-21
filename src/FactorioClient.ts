@@ -4,8 +4,10 @@ import { ModID, Version, DisconnectReason } from "./data";
 import {
 	InputActionType,
 	InputAction,
+	InputActionSegment,
 	PlayerJoinGameData,
 } from "./input";
+import { ReadableStream } from "./stream"
 import {
 	SynchronizerActionType,
 	SynchronizerAction,
@@ -65,6 +67,8 @@ class FactorioClient extends events.EventEmitter {
 	synchronizerActionsToSend: SynchronizerAction[] = [];
 	updateTick: number | null = null;
 	tickClosuresReceived = new Map<number, TickClosure>();
+	inputActionSegmentsReceived = new Map<number, Map<number, InputActionSegment[]>>();
+	inputActionSegmentsCompleted: InputActionSegment[][] = []
 	nextTickClosureToSend: number | null = null;
 	tickClosuresToSend: TickClosure[] = [];
 	inputActionsToSend = new Map<number, InputAction[]>();
@@ -277,6 +281,54 @@ class FactorioClient extends events.EventEmitter {
 		}
 	}
 
+	handleInputAction(action: InputAction) {
+		this.emit("input_action", action);
+		if (action.type === InputActionType.PlayerJoinGame) {
+			const playerJoinData = action.data! as PlayerJoinGameData;
+			if (playerJoinData.peerID === this.peerID) {
+				this.playerIndex = playerJoinData.playerIndex;
+				this.emit("join_game", { playerIndex: this.playerIndex });
+			}
+		}
+	}
+
+	handleInputActionSegment(segment: InputActionSegment) {
+		let playerSegments = this.inputActionSegmentsReceived.get(segment.playerIndex);
+		if (!playerSegments) {
+			playerSegments = new Map();
+			this.inputActionSegmentsReceived.set(segment.playerIndex, playerSegments);
+		}
+		let inputSegments = playerSegments.get(segment.id);
+		if (!inputSegments) {
+			inputSegments = [];
+			playerSegments.set(segment.id, inputSegments);
+		}
+		inputSegments.push(segment);
+
+		if (segment.segmentNumber + 1 === segment.totalSegments) {
+			this.inputActionSegmentsCompleted.push(inputSegments);
+			playerSegments.delete(segment.id);
+		}
+	}
+
+	reassembleCompletedInputActionSegments() {
+		const actions = [];
+		for (let segments of this.inputActionSegmentsCompleted) {
+			const parts: Buffer[] = [];
+			for (let i = 0; i < segments.length; i++) {
+				if (segments[i].segmentNumber !== i) {
+					throw new Error("Received out of order input action segment");
+				}
+				parts.push(segments[i].payload);
+			}
+
+			const inputStream = new ReadableStream(Buffer.concat(parts));
+			actions.push(InputAction.readPayload(inputStream, segments[0].type));
+		}
+		this.inputActionSegmentsCompleted = [];
+		return actions;
+	}
+
 	sendInTickClosure(updateTick: number, action: InputAction) {
 		if (this.playerIndex == null) {
 			throw new Error("Cannot send actions before having joined the game");
@@ -324,14 +376,15 @@ class FactorioClient extends events.EventEmitter {
 
 		this.emit("tick");
 		for (let inputAction of serverTickClosure.inputActions) {
-			this.emit("input_action", inputAction);
-			if (inputAction.type === InputActionType.PlayerJoinGame) {
-				const playerJoinData = inputAction.data! as PlayerJoinGameData;
-				if (playerJoinData.peerID === this.peerID) {
-					this.playerIndex = playerJoinData.playerIndex;
-					this.emit("join_game", { playerIndex: this.playerIndex });
-				}
-			}
+			this.handleInputAction(inputAction)
+		}
+
+		for (let inputActionSegment of serverTickClosure.inputActionSegments) {
+			this.handleInputActionSegment(inputActionSegment);
+		}
+
+		for (let inputAction of this.reassembleCompletedInputActionSegments()) {
+			this.handleInputAction(inputAction);
 		}
 
 		const latencyTick = this.updateTick + this.latency;
