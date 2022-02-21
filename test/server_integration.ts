@@ -163,7 +163,7 @@ export class ServerInterface {
 		instanceConfig.set("instance.name", String(this.instanceId));
 		this.gamePort = Math.floor(Math.random() * (65536 - 49152) + 49152);
 		instanceConfig.set("factorio.game_port", this.gamePort);
-		instanceConfig.set("factorio.version", "1.1.38");
+		instanceConfig.set("factorio.version", "1.1.53");
 		instanceConfig.setProp("factorio.settings", "name", String(this.instanceId));
 		instanceConfig.setProp("factorio.settings", "visibility", { public: false, lan: true });
 		instanceConfig.setProp("factorio.settings", "require_user_verification", false );

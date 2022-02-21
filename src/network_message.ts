@@ -228,6 +228,7 @@ export enum ConnectionRequestStatus {
 	UserVerificationTimeout,
 	UserVerificationMismatch,
 	UserBanned,
+	UserBannedByAuthServer,
 	AddressUsedForDifferentPlayer,
 	UserWithThatNameAlreadyInGame,
 	UserNotWhitelisted,
@@ -243,6 +244,7 @@ export class ConnectionAcceptOrDeny implements AbstractNetworkMessage {
 		public serverHash: string,
 		public description: string,
 		public latency: number,
+		public maxUpdatesPerSecond: number,
 		public gameID: number,
 		public steamID: Buffer,
 		public clientsPeerInfo: ClientsPeerInfo,
@@ -262,6 +264,7 @@ export class ConnectionAcceptOrDeny implements AbstractNetworkMessage {
 			readUtf8String(stream),
 			readUtf8String(stream),
 			readUInt8(stream),
+			readSpaceOptimizedUInt32(stream),
 			readUInt32(stream),
 			readBuffer(stream, 8),
 			ClientsPeerInfo.read(stream),
@@ -281,6 +284,7 @@ export class ConnectionAcceptOrDeny implements AbstractNetworkMessage {
 		writeUtf8String(stream, message.serverHash);
 		writeUtf8String(stream, message.description);
 		writeUInt8(stream, message.latency);
+		writeSpaceOptimizedUInt32(stream, message.maxUpdatesPerSecond);
 		writeUInt32(stream, message.gameID);
 		writeBuffer(stream, message.steamID);
 		ClientsPeerInfo.write(stream, message.clientsPeerInfo);
