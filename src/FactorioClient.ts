@@ -220,6 +220,7 @@ class FactorioClient extends events.EventEmitter {
 									synchronizerAction.reason,
 								));
 							}
+							break;
 
 						case SynchronizerActionType.AuxiliaryDataReadyForDownload:
 							if (synchronizerAction.peerID !== this.peerID) {
