@@ -1,6 +1,6 @@
 import events from "events";
 import UdpClient from "./UdpClient";
-import { ModID, Version, DisconnectReason } from "./data";
+import { ModID, PropertyTree, PropertyTreeType, Version, DisconnectReason } from "./data";
 import {
 	InputActionType,
 	InputAction,
@@ -15,7 +15,6 @@ import {
 	ClientChangedState,
 	ClientMultiplayerStateType,
 	IncreasedLatencyConfirm,
-	AuxiliaryDataDownloadFinished,
 } from "./synchronizer_action";
 import {
 	NetworkMessageType,
@@ -168,7 +167,7 @@ class FactorioClient extends events.EventEmitter {
 					this.coreChecksum,
 					this.prototypeListChecksum,
 					this.activeMods,
-					[],
+					new PropertyTree(PropertyTreeType.Dictionary, false, []),
 				);
 				this.connection.send(confirm);
 				break;
@@ -220,15 +219,6 @@ class FactorioClient extends events.EventEmitter {
 									synchronizerAction.reason,
 								));
 							}
-							break;
-
-						case SynchronizerActionType.AuxiliaryDataReadyForDownload:
-							if (synchronizerAction.peerID !== this.peerID) {
-								break;
-							}
-							this.synchronizerActionsToSend.push(
-								new AuxiliaryDataDownloadFinished(),
-							);
 							break;
 
 						case SynchronizerActionType.MapReadyForDownload:

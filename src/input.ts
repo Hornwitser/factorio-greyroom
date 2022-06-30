@@ -172,6 +172,7 @@ export enum InputActionType {
 	CancelResearch,
 	SelectArea,
 	AltSelectArea,
+	ReverseSelectArea,
 	ServerCommand,
 	SetControllerLogisticTrashFilterItem,
 	SetEntityLogisticTrashFilterItem,

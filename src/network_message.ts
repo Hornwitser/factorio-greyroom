@@ -6,7 +6,7 @@ import {
 	writeBuffer, writeUtf8String, writeArray, writeMap,
 } from "./stream";
 import { InputAction, InputActionSegment } from "./input";
-import { Version, ModID, ModStartupSetting, SmallProgress, readSmallProgress, writeSmallProgress } from "./data";
+import { Version, ModID, PropertyTree, SmallProgress, readSmallProgress, writeSmallProgress } from "./data";
 import { SynchronizerAction, readSynchronizerAction, writeSynchronizerAction } from "./synchronizer_action";
 
 export enum NetworkMessageType {
@@ -92,7 +92,7 @@ export class ConnectionRequestReplyConfirm implements AbstractNetworkMessage {
 		public coreChecksum: number,
 		public prototypeListChecksum: number,
 		public activeMods: ModID[],
-		public startupModSettings: ModStartupSetting[],
+		public startupModSettings: PropertyTree,
 	) { }
 
 	static read(stream: ReadableStream) {
@@ -107,7 +107,7 @@ export class ConnectionRequestReplyConfirm implements AbstractNetworkMessage {
 			readUInt32(stream),
 			readUInt32(stream),
 			readArray(stream, ModID.read),
-			readArray(stream, ModStartupSetting.read)
+			PropertyTree.read(stream),
 		);
 	}
 
@@ -122,7 +122,7 @@ export class ConnectionRequestReplyConfirm implements AbstractNetworkMessage {
 		writeUInt32(stream, message.coreChecksum);
 		writeUInt32(stream, message.prototypeListChecksum);
 		writeArray(stream, message.activeMods, ModID.write);
-		writeArray(stream, message.startupModSettings, ModStartupSetting.write);
+		PropertyTree.write(stream, message.startupModSettings);
 	}
 }
 
@@ -252,7 +252,7 @@ export class ConnectionAcceptOrDeny implements AbstractNetworkMessage {
 		public firstSequenceNumberToSend: number,
 		public newPeerID: number,
 		public activeMods: ModID[],
-		public startupModSettings: ModStartupSetting[],
+		public startupModSettings: PropertyTree,
 		public pausedBy: number,
 	) { }
 
@@ -272,7 +272,7 @@ export class ConnectionAcceptOrDeny implements AbstractNetworkMessage {
 			readUInt32(stream),
 			readUInt16(stream),
 			readArray(stream, ModID.read),
-			readArray(stream, ModStartupSetting.read),
+			PropertyTree.read(stream),
 			readUInt16(stream),
 		);
 	}
@@ -292,7 +292,7 @@ export class ConnectionAcceptOrDeny implements AbstractNetworkMessage {
 		writeUInt32(stream, message.firstSequenceNumberToSend);
 		writeUInt16(stream, message.newPeerID);
 		writeArray(stream, message.activeMods, ModID.write);
-		writeArray(stream, message.startupModSettings, ModStartupSetting.write);
+		PropertyTree.write(stream, message.startupModSettings);
 		writeUInt16(stream, message.pausedBy);
 	}
 }

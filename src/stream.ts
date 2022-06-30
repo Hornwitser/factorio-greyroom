@@ -53,6 +53,15 @@ export class ReadableStream {
 		return value;
 	}
 
+	readDouble() {
+		if (this.pos + 8 > this.buf.length) {
+			throw new DecodeError("End of stream reached reading Double", { stream: this });
+		}
+		const value = this.buf.readDoubleLE(this.pos);
+		this.pos += 8;
+		return value;
+	}
+
 	readBuffer(size?: number) {
 		const end = size === undefined ? undefined : this.pos + size;
 		if (end !== undefined && end > this.buf.length) {
@@ -74,6 +83,7 @@ export function readBool(stream: ReadableStream) { return stream.readBool(); }
 export function readUInt8(stream: ReadableStream) { return stream.readUInt8(); }
 export function readUInt16(stream: ReadableStream) { return stream.readUInt16(); }
 export function readUInt32(stream: ReadableStream) { return stream.readUInt32();}
+export function readDouble(stream: ReadableStream) { return stream.readDouble();}
 export function readBuffer(stream: ReadableStream, size?: number) { return stream.readBuffer(size); }
 
 export function readSpaceOptimizedUInt16(stream: ReadableStream) {
@@ -167,6 +177,13 @@ export class WritableStream {
 		this.bufs.push(buf);
 	}
 
+	writeDouble(value: number) {
+		const buf = Buffer.alloc(8);
+		buf.writeDoubleLE(value);
+		this.bufs.push(buf);
+	}
+
+
 	writeBuffer(buf: Buffer) {
 		this.bufs.push(buf);
 	}
@@ -182,6 +199,7 @@ export function writeBool(stream: WritableStream, value: boolean) { return strea
 export function writeUInt8(stream: WritableStream, value: number) { return stream.writeUInt8(value); }
 export function writeUInt16(stream: WritableStream, value: number) { return stream.writeUInt16(value); }
 export function writeUInt32(stream: WritableStream, value: number) { return stream.writeUInt32(value);}
+export function writeDouble(stream: WritableStream, value: number) { return stream.writeDouble(value); }
 export function writeBuffer(stream: WritableStream, buf: Buffer) { return stream.writeBuffer(buf); }
 
 export function writeSpaceOptimizedUInt16(stream: WritableStream, value: number) {

@@ -1,7 +1,8 @@
+import { DuplexTable } from "./types"
 import {
-	ReadableStream, WritableStream,
-	readUInt8, readUInt16, readUInt32, readSpaceOptimizedUInt16, readUtf8String,
-	writeUInt8, writeUInt16, writeUInt32, writeSpaceOptimizedUInt16, writeUtf8String,
+	ReadableStream, Reader, WritableStream, Writer,
+	readBool, readUInt8, readUInt16, readUInt32, readDouble, readSpaceOptimizedUInt16, readUtf8String,
+	writeBool, writeUInt8, writeUInt16, writeUInt32, writeDouble, writeSpaceOptimizedUInt16, writeUtf8String,
 } from "./stream";
 
 export class Version {
@@ -73,17 +74,93 @@ export class ModID {
 	}
 }
 
-export class ModStartupSetting {
-	static read(stream: ReadableStream) {
-		readUInt8(stream);
-		return new ModStartupSetting();
+export function readImmutableString(stream: ReadableStream) {
+	let empty = readBool(stream);
+	if (!empty) {
+		return readUtf8String(stream);
 	}
+	return "";
+}
 
-	static write(stream: WritableStream, setting: ModStartupSetting) {
-		writeUInt8(stream, 0);
+export function writeImmutableString(stream: WritableStream, value: string) {
+	let empty = !value.length;
+	writeBool(stream, empty);
+	if (!empty) {
+		writeUtf8String(stream, value);
 	}
 }
 
+export enum PropertyTreeType {
+	None,
+	Bool,
+	Number,
+	String,
+	List,
+	Dictionary,
+}
+
+type PropertyTreeValueType = {
+	[PropertyTreeType.None]: undefined,
+	[PropertyTreeType.Bool]: boolean,
+	[PropertyTreeType.Number]: number,
+	[PropertyTreeType.String]: string,
+	[PropertyTreeType.List]: PropertyTree<PropertyTreeType>[],
+	[PropertyTreeType.Dictionary]: PropertyTree<PropertyTreeType>[],
+}
+
+const propertyTreeDuplex: DuplexTable<PropertyTreeType, PropertyTreeValueType> = {
+	[PropertyTreeType.None]: { read: () => undefined, write: () => {} },
+	[PropertyTreeType.Bool]: { read: readBool, write: writeBool },
+	[PropertyTreeType.Number]: { read: readDouble, write: writeDouble },
+	[PropertyTreeType.String]: { read: readImmutableString, write: writeImmutableString },
+	[PropertyTreeType.List]: { read: readPropertyTreeList, write: writePropertyTreeList },
+	[PropertyTreeType.Dictionary]: { read: readPropertyTreeList, write: writePropertyTreeList },
+};
+
+export class PropertyTree<T extends PropertyTreeType = PropertyTreeType> {
+	constructor(
+		public type: T,
+		public anyTypeFlag: boolean,
+		public value: PropertyTreeValueType[T],
+		public key: string = "",
+	) { }
+
+	static read(stream: ReadableStream) {
+		const type: PropertyTreeType = readUInt8(stream);
+
+		return new PropertyTree(
+			type,
+			readBool(stream),
+			propertyTreeDuplex[type].read(stream),
+		);
+	}
+
+	static write<T extends PropertyTreeType>(stream: WritableStream, tree: PropertyTree<T>) {
+		writeUInt8(stream, tree.type);
+		writeBool(stream, tree.anyTypeFlag);
+		propertyTreeDuplex[tree.type].write(stream, tree.value);
+	}
+}
+
+function readPropertyTreeList(stream: ReadableStream) {
+	let size = readUInt32(stream);
+	let items = [];
+	for (let i = 0; i < size; i++) {
+		let key = readImmutableString(stream);
+		let item = PropertyTree.read(stream);
+		item.key = key;
+		items.push(item);
+	}
+	return items;
+}
+
+function writePropertyTreeList(stream: WritableStream, items: PropertyTree<PropertyTreeType>[]) {
+	writeUInt32(stream, items.length);
+	for (let item of items) {
+		writeImmutableString(stream, item.key);
+		PropertyTree.write(stream, item);
+	}
+}
 
 export enum DirectionEnum {
 	North,

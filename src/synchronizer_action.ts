@@ -27,8 +27,6 @@ export enum SynchronizerActionType {
 	ChangeLatency,
 	IncreasedLatencyConfirm,
 	SavingCountDown,
-	AuxiliaryDataReadyForDownload,
-	AuxiliaryDataDownloadFinished,
 }
 
 
@@ -366,6 +364,7 @@ export class MapReadyForDownload implements AbstractSynchronizerAction {
 	readonly type = SynchronizerActionType.MapReadyForDownload;
 	constructor(
 		public size: number,
+		public auxiliarySize: number,
 		public crc: number,
 		public updateTick: number,
 		public autosaveInterval: number,
@@ -385,6 +384,7 @@ export class MapReadyForDownload implements AbstractSynchronizerAction {
 			readUInt32(stream),
 			readUInt32(stream),
 			readUInt32(stream),
+			readUInt32(stream),
 			readBool(stream),
 			readBool(stream),
 			readMap(stream, readUtf8String, readUInt32),
@@ -397,6 +397,7 @@ export class MapReadyForDownload implements AbstractSynchronizerAction {
 
 	static write(stream: WritableStream, action: MapReadyForDownload) {
 		writeUInt32(stream, action.size);
+		writeUInt32(stream, action.auxiliarySize);
 		writeUInt32(stream, action.crc);
 		writeUInt32(stream, action.updateTick);
 		writeUInt32(stream, action.autosaveInterval);
@@ -630,42 +631,6 @@ export class SavingCountDown implements AbstractSynchronizerAction {
 }
 
 
-export class AuxiliaryDataReadyForDownload implements AbstractSynchronizerAction {
-	readonly type = SynchronizerActionType.AuxiliaryDataReadyForDownload;
-	constructor(
-		public size: number,
-		public crc: number,
-		public peerID?: number,
-	) { }
-
-	static read(stream: ReadableStream) {
-		return new AuxiliaryDataReadyForDownload(
-			readUInt32(stream),
-			readUInt32(stream),
-		);
-	}
-
-	static write(stream: WritableStream, action: AuxiliaryDataReadyForDownload) {
-		writeUInt32(stream, action.size);
-		writeUInt32(stream, action.crc);
-	}
-}
-
-
-export class AuxiliaryDataDownloadFinished implements AbstractSynchronizerAction {
-	readonly type = SynchronizerActionType.AuxiliaryDataDownloadFinished;
-	constructor(
-		public peerID?: number,
-	) { }
-
-	static read() {
-		return new AuxiliaryDataDownloadFinished();
-	}
-
-	static write() { }
-}
-
-
 export type SynchronizerAction =
 	GameEnd |
 	PeerDisconnect |
@@ -684,9 +649,7 @@ export type SynchronizerAction =
 	EndPause |
 	ChangeLatency |
 	IncreasedLatencyConfirm |
-	SavingCountDown |
-	AuxiliaryDataReadyForDownload |
-	AuxiliaryDataDownloadFinished
+	SavingCountDown
 ;
 
 export const SynchronizerActionTypeToClass = new Map<SynchronizerActionType, Streamable<SynchronizerAction>>([
@@ -710,8 +673,6 @@ export const SynchronizerActionTypeToClass = new Map<SynchronizerActionType, Str
 	[SynchronizerActionType.ChangeLatency, ChangeLatency],
 	[SynchronizerActionType.IncreasedLatencyConfirm, IncreasedLatencyConfirm],
 	[SynchronizerActionType.SavingCountDown, SavingCountDown],
-	[SynchronizerActionType.AuxiliaryDataReadyForDownload, AuxiliaryDataReadyForDownload],
-	[SynchronizerActionType.AuxiliaryDataDownloadFinished, AuxiliaryDataDownloadFinished],
 ]);
 
 export function readSynchronizerAction(stream: ReadableStream, isServer: boolean): SynchronizerAction {
@@ -749,4 +710,3 @@ export function writeSynchronizerAction(
 		writeUInt16(stream, synchronizerAction.peerID!);
 	}
 }
-
