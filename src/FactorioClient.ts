@@ -259,8 +259,10 @@ class FactorioClient extends events.EventEmitter {
 							break;
 
 						case SynchronizerActionType.NewPeerInfo:
+						case SynchronizerActionType.PeerDroppingProgressUpdate:
 						case SynchronizerActionType.MapSavingProgressUpdate:
 						case SynchronizerActionType.SavingForUpdate:
+						case SynchronizerActionType.SavingCountDown:
 							break; // Ignore
 
 						default:
