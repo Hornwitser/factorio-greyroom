@@ -200,7 +200,7 @@ class FactorioClient extends events.EventEmitter {
 						this.abort();
 						this.emit("error", err);
 					}
-				}, 1000 / 30);
+				}, 1000 / 60);
 				break;
 
 			case NetworkMessageType.ServerToClientHeartbeat:
