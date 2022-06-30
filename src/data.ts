@@ -192,10 +192,10 @@ export class Direction {
 		);
 	}
 
-	write (stream: WritableStream) {
-		let value = this.value;
-		if (this.targetValue !== DirectionEnum.None) {
-			value += ((this.targetValue + 1) << 4);
+	static write (stream: WritableStream, direction: Direction) {
+		let value = direction.value;
+		if (direction.targetValue !== DirectionEnum.None) {
+			value += ((direction.targetValue + 1) << 4);
 		}
 		writeUInt8(stream, value);
 	}

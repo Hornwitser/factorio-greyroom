@@ -480,7 +480,7 @@ export class InputAction {
 				break; // No data
 
 			case InputActionType.StartWalking:
-				(input.data! as Direction).write(stream);
+				Direction.write(stream, input.data! as Direction);
 				break;
 
 			case InputActionType.CheckCRCHeuristic:
