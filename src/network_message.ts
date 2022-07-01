@@ -496,6 +496,42 @@ export class ServerToClientHeartbeat implements AbstractNetworkMessage {
 }
 
 
+export class TransferBlockRequest implements AbstractNetworkMessage {
+	readonly type = NetworkMessageType.TransferBlockRequest;
+	constructor(
+		public blockNumber: number,
+	) { }
+
+	static read(stream: ReadableStream) {
+		return new TransferBlockRequest(readUInt32(stream));
+	}
+
+	static write(stream: WritableStream, message: TransferBlockRequest) {
+		writeUInt32(stream, message.blockNumber);
+	}
+}
+
+
+export class TransferBlock implements AbstractNetworkMessage {
+	readonly type = NetworkMessageType.TransferBlock;
+	constructor(
+		public blockNumber: number,
+		public data: Buffer,
+	) { }
+
+	static read(stream: ReadableStream) {
+		return new TransferBlock(readUInt32(stream), readBuffer(stream));
+	}
+
+	static write(stream: WritableStream, message: TransferBlock) {
+		writeUInt32(stream, message.blockNumber);
+		writeBuffer(stream, message.data);
+	}
+
+	static blockSize: number = 503;
+}
+
+
 export class Empty implements AbstractNetworkMessage {
 	readonly type = NetworkMessageType.Empty;
 
@@ -516,6 +552,8 @@ export type NetworkMessage =
 	ConnectionAcceptOrDeny |
 	ClientToServerHeartbeat |
 	ServerToClientHeartbeat |
+	TransferBlockRequest |
+	TransferBlock |
 	Empty
 ;
 
@@ -532,8 +570,8 @@ export const NetworkMessageTypeToClass = new Map<NetworkMessageType, Streamable<
 	// [NetworkMessageType.GetOwnAddressReply, ...],
 	// [NetworkMessageType.NatPunchRequest, ...],
 	// [NetworkMessageType.NatPunch, ...],
-	// [NetworkMessageType.TransferBlockRequest, ...],
-	// [NetworkMessageType.TransferBlock, ...],
+	[NetworkMessageType.TransferBlockRequest, TransferBlockRequest],
+	[NetworkMessageType.TransferBlock, TransferBlock],
 	// [NetworkMessageType.RequestForHeartbeatWhenDisconnecting, RequestForHeartbeatWhenDisconnecting],
 	// [NetworkMessageType.LANBroadcast, ...],
 	// [NetworkMessageType.GameInformationRequest, ...],
