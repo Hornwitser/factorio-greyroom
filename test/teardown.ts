@@ -6,7 +6,7 @@ declare namespace global {
 	var slaveProcess: child_process.ChildProcess | undefined;
 }
 
-export default async function setup() {
+export default async function teardown() {
 	if (global.slaveProcess) {
 		global.slaveProcess.kill("SIGINT");
 		await events.once(global.slaveProcess, "exit");
