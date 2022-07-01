@@ -3,7 +3,6 @@ import {
 	InputActionType,
 	InputAction,
 	MapPosition,
-	ShootingState,
 	ShootingStateState,
 	SynchronizerActionType,
 	SynchronizerAction,
@@ -75,7 +74,7 @@ test("handles latency change", done => {
 			return;
 		}
 		client.sendInNextTickClosure(
-			new InputAction(InputActionType.ClearCursor),
+			new InputAction(InputActionType.ClearCursor, undefined),
 		);
 	});
 	function check(action: SynchronizerAction) {
@@ -91,9 +90,9 @@ test("handles latency change", done => {
 test("start and stop mining", async () => {
 	let offset = client.updateTick! + client.latency;
 	client.sendInTickClosure(offset + 3, new InputAction(InputActionType.SelectedEntityChangedVeryClose, 0x87));
-	client.sendInTickClosure(offset + 11, new InputAction(InputActionType.BeginMining));
-	client.sendInTickClosure(offset + 165, new InputAction(InputActionType.StopMining));
-	client.sendInTickClosure(offset + 197, new InputAction(InputActionType.SelectedEntityCleared));
+	client.sendInTickClosure(offset + 11, new InputAction(InputActionType.BeginMining, undefined));
+	client.sendInTickClosure(offset + 165, new InputAction(InputActionType.StopMining, undefined));
+	client.sendInTickClosure(offset + 197, new InputAction(InputActionType.SelectedEntityCleared, undefined));
 
 	await waitForInput(InputActionType.SelectedEntityCleared);
 	expect(await serverInterface.sendRcon(
@@ -109,7 +108,7 @@ test("shooting state", async () => {
 	client.sendInTickClosure(offset + 80, new InputAction(InputActionType.ChangeShootingState,
 		{ "state": ShootingStateState.NotShooting, "target": new MapPosition(0, -5) },
 	));
-	client.sendInTickClosure(offset + 90, new InputAction(InputActionType.SelectedEntityCleared));
+	client.sendInTickClosure(offset + 90, new InputAction(InputActionType.SelectedEntityCleared, undefined));
 
 	await serverInterface.sendRcon(
 		'/c biter = game.get_surface(1).create_entity{name="small-biter", position={0, -5}}'
@@ -123,7 +122,7 @@ test("shooting state", async () => {
 test("start and stop walking input actions", async () => {
 	let offset = client.updateTick! + client.latency;
 	client.sendInTickClosure(offset, new InputAction(InputActionType.StartWalking, new Direction(DirectionEnum.South)));
-	client.sendInTickClosure(offset + 10, new InputAction(InputActionType.StopWalking));
+	client.sendInTickClosure(offset + 10, new InputAction(InputActionType.StopWalking, undefined));
 
 	await waitForInput(InputActionType.StopWalking);
 	expect(await serverInterface.sendRcon(

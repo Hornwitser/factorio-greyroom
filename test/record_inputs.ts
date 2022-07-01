@@ -180,11 +180,8 @@ async function main() {
 				firstTick = tickClosure.updateTick;
 			}
 			for (let inputAction of tickClosure.inputActions) {
-				let data = "";
-				if (inputAction.type > InputActionType.ForceFullCRC) {
-					data = ", " + JSON.stringify(inputAction.data);
-				}
-				let action = `new InputAction(InputActionType.${InputActionType[inputAction.type]}${data})`;
+				let data = JSON.stringify(inputAction.data);
+				let action = `new InputAction(InputActionType.${InputActionType[inputAction.type]}, ${data})`;
 				console.log(`client.sendInTickClosure(offset + ${tickClosure.updateTick - firstTick}, ${action});`);
 			}
 		}

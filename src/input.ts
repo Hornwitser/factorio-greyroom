@@ -1,3 +1,4 @@
+import { DuplexTable } from "./types";
 import {
 	DecodeError, ReadableStream, EncodeError, WritableStream,
 	readBool, readUInt8, readUInt16, readUInt32, readBuffer,
@@ -257,13 +258,541 @@ export enum InputActionType {
 	SetLinkedContainerLinkID,
 }
 
+export type InputActionValueType = {
+	[InputActionType.Nothing]: undefined,
+	[InputActionType.StopWalking]: undefined,
+	[InputActionType.BeginMining]: undefined,
+	[InputActionType.StopMining]: undefined,
+	[InputActionType.ToggleDriving]: undefined,
+	[InputActionType.OpenGui]: undefined,
+	[InputActionType.CloseGui]: undefined,
+	[InputActionType.OpenCharacterGui]: undefined,
+	[InputActionType.OpenCurrentVehicleGui]: undefined,
+	[InputActionType.ConnectRollingStock]: undefined,
+	[InputActionType.DisconnectRollingStock]: undefined,
+	[InputActionType.SelectedEntityCleared]: undefined,
+	[InputActionType.ClearCursor]: undefined,
+	[InputActionType.ResetAssemblingMachine]: undefined,
+	[InputActionType.OpenTechnologyGui]: undefined,
+	[InputActionType.LaunchRocket]: undefined,
+	[InputActionType.OpenProductionGui]: undefined,
+	[InputActionType.StopRepair]: undefined,
+	[InputActionType.CancelNewBlueprint]: undefined,
+	[InputActionType.CloseBlueprintRecord]: undefined,
+	[InputActionType.CopyEntitySettings]: undefined,
+	[InputActionType.PasteEntitySettings]: undefined,
+	[InputActionType.DestroyOpenedItem]: undefined,
+	[InputActionType.CopyOpenedItem]: undefined,
+	[InputActionType.ToggleShowEntityInfo]: undefined,
+	[InputActionType.SingleplayerInit]: undefined,
+	[InputActionType.MultiplayerInit]: undefined,
+	[InputActionType.DisconnectAllPlayers]: undefined,
+	[InputActionType.SwitchToRenameStopGui]: undefined,
+	[InputActionType.OpenBonusGui]: undefined,
+	[InputActionType.OpenTrainsGui]: undefined,
+	[InputActionType.OpenAchievementsGui]: undefined,
+	[InputActionType.CycleBlueprintBookForwards]: undefined,
+	[InputActionType.CycleBlueprintBookBackwards]: undefined,
+	[InputActionType.CycleClipboardForwards]: undefined,
+	[InputActionType.CycleClipboardBackwards]: undefined,
+	[InputActionType.StopMovementInTheNextTick]: undefined,
+	[InputActionType.ToggleEnableVehicleLogisticsWhileMoving]: undefined,
+	[InputActionType.ToggleDeconstructionItemEntityFilterMode]: undefined,
+	[InputActionType.ToggleDeconstructionItemTileFilterMode]: undefined,
+	[InputActionType.OpenLogisticGui]: undefined,
+	[InputActionType.SelectNextValidGun]: undefined,
+	[InputActionType.ToggleMapEditor]: undefined,
+	[InputActionType.DeleteBlueprintLibrary]: undefined,
+	[InputActionType.GameCreatedFromScenario]: undefined,
+	[InputActionType.ActivateCopy]: undefined,
+	[InputActionType.ActivateCut]: undefined,
+	[InputActionType.ActivatePaste]: undefined,
+	[InputActionType.Undo]: undefined,
+	[InputActionType.TogglePersonalRoboport]: undefined,
+	[InputActionType.ToggleEquipmentMovementBonus]: undefined,
+	[InputActionType.TogglePersonalLogisticRequests]: undefined,
+	[InputActionType.ToggleEntityLogisticRequests]: undefined,
+	[InputActionType.StopBuildingByMoving]: undefined,
+	[InputActionType.FlushOpenedEntityFluid]: undefined,
+	[InputActionType.ForceFullCRC]: undefined,
+
+	[InputActionType.OpenTipsAndTricksGui]: never,
+	[InputActionType.OpenBlueprintLibraryGui]: never,
+	[InputActionType.ChangeBlueprintLibraryTab]: never,
+	[InputActionType.DropItem]: never,
+	[InputActionType.Build]: never,
+	[InputActionType.StartWalking]: Direction,
+	[InputActionType.BeginMiningTerrain]: never,
+	[InputActionType.ChangeRidingState]: never,
+	[InputActionType.OpenItem]: never,
+	[InputActionType.OpenParentOfOpenedItem]: never,
+	[InputActionType.ResetItem]: never,
+	[InputActionType.DestroyItem]: never,
+	[InputActionType.OpenModItem]: never,
+	[InputActionType.OpenEquipment]: never,
+	[InputActionType.CursorTransfer]: never,
+	[InputActionType.CursorSplit]: never,
+	[InputActionType.StackTransfer]: never,
+	[InputActionType.InventoryTransfer]: never,
+	[InputActionType.CheckCRCHeuristic]: CrcData,
+	[InputActionType.Craft]: never,
+	[InputActionType.WireDragging]: never,
+	[InputActionType.ChangeShootingState]: ShootingState,
+	[InputActionType.SetupAssemblingMachine]: never,
+	[InputActionType.SelectedEntityChanged]: never,
+	[InputActionType.SmartPipette]: never,
+	[InputActionType.StackSplit]: never,
+	[InputActionType.InventorySplit]: never,
+	[InputActionType.CancelCraft]: never,
+	[InputActionType.SetFilter]: never,
+	[InputActionType.CheckCRC]: CrcData,
+	[InputActionType.SetCircuitCondition]: never,
+	[InputActionType.SetSignal]: never,
+	[InputActionType.StartResearch]: never,
+	[InputActionType.SetLogisticFilterItem]: never,
+	[InputActionType.SetLogisticFilterSignal]: never,
+	[InputActionType.SetCircuitModeOfOperation]: never,
+	[InputActionType.GuiClick]: never,
+	[InputActionType.GuiConfirmed]: never,
+	[InputActionType.WriteToConsole]: never,
+	[InputActionType.MarketOffer]: never,
+	[InputActionType.AddTrainStation]: never,
+	[InputActionType.ChangeTrainStopStation]: never,
+	[InputActionType.ChangeActiveItemGroupForCrafting]: never,
+	[InputActionType.ChangeActiveItemGroupForFilters]: never,
+	[InputActionType.ChangeActiveCharacterTab]: never,
+	[InputActionType.GuiTextChanged]: never,
+	[InputActionType.GuiCheckedStateChanged]: never,
+	[InputActionType.GuiSelectionStateChanged]: never,
+	[InputActionType.GuiSelectedTabChanged]: never,
+	[InputActionType.GuiValueChanged]: never,
+	[InputActionType.GuiSwitchStateChanged]: never,
+	[InputActionType.GuiLocationChanged]: never,
+	[InputActionType.PlaceEquipment]: never,
+	[InputActionType.TakeEquipment]: never,
+	[InputActionType.UseItem]: never,
+	[InputActionType.SendSpidertron]: never,
+	[InputActionType.UseArtilleryRemote]: never,
+	[InputActionType.SetInventoryBar]: never,
+	[InputActionType.MoveOnZoom]: never,
+	[InputActionType.StartRepair]: never,
+	[InputActionType.Deconstruct]: never,
+	[InputActionType.Upgrade]: never,
+	[InputActionType.Copy]: never,
+	[InputActionType.AlternativeCopy]: never,
+	[InputActionType.SelectBlueprintEntities]: never,
+	[InputActionType.AltSelectBlueprintEntities]: never,
+	[InputActionType.SetupBlueprint]: never,
+	[InputActionType.SetupSingleBlueprintRecord]: never,
+	[InputActionType.CopyOpenedBlueprint]: never,
+	[InputActionType.ReassignBlueprint]: never,
+	[InputActionType.OpenBlueprintRecord]: never,
+	[InputActionType.GrabBlueprintRecord]: never,
+	[InputActionType.DropBlueprintRecord]: never,
+	[InputActionType.DeleteBlueprintRecord]: never,
+	[InputActionType.UpgradeOpenedBlueprintByRecord]: never,
+	[InputActionType.UpgradeOpenedBlueprintByItem]: never,
+	[InputActionType.SpawnItem]: never,
+	[InputActionType.SpawnItemStackTransfer]: never,
+	[InputActionType.UpdateBlueprintShelf]: never,
+	[InputActionType.TransferBlueprint]: never,
+	[InputActionType.TransferBlueprintImmediately]: never,
+	[InputActionType.EditBlueprintToolPreview]: never,
+	[InputActionType.RemoveCables]: never,
+	[InputActionType.ExportBlueprint]: never,
+	[InputActionType.ImportBlueprint]: never,
+	[InputActionType.ImportBlueprintsFiltered]: never,
+	[InputActionType.PlayerJoinGame]: PlayerJoinGameData,
+	[InputActionType.PlayerAdminChange]: never,
+	[InputActionType.CancelDeconstruct]: never,
+	[InputActionType.CancelUpgrade]: never,
+	[InputActionType.ChangeArithmeticCombinatorParameters]: never,
+	[InputActionType.ChangeDeciderCombinatorParameters]: never,
+	[InputActionType.ChangeProgrammableSpeakerParameters]: never,
+	[InputActionType.ChangeProgrammableSpeakerAlertParameters]: never,
+	[InputActionType.ChangeProgrammableSpeakerCircuitParameters]: never,
+	[InputActionType.SetVehicleAutomaticTargetingParameters]: never,
+	[InputActionType.BuildTerrain]: never,
+	[InputActionType.ChangeTrainWaitCondition]: never,
+	[InputActionType.ChangeTrainWaitConditionData]: never,
+	[InputActionType.CustomInput]: never,
+	[InputActionType.ChangeItemLabel]: never,
+	[InputActionType.ChangeItemDescription]: never,
+	[InputActionType.ChangeEntityLabel]: never,
+	[InputActionType.BuildRail]: never,
+	[InputActionType.CancelResearch]: never,
+	[InputActionType.SelectArea]: never,
+	[InputActionType.AltSelectArea]: never,
+	[InputActionType.ReverseSelectArea]: never,
+	[InputActionType.ServerCommand]: ServerCommandData,
+	[InputActionType.SetControllerLogisticTrashFilterItem]: never,
+	[InputActionType.SetEntityLogisticTrashFilterItem]: never,
+	[InputActionType.SetInfinityContainerFilterItem]: never,
+	[InputActionType.SetInfinityPipeFilter]: never,
+	[InputActionType.ModSettingsChanged]: never,
+	[InputActionType.SetEntityEnergyProperty]: never,
+	[InputActionType.EditCustomTag]: never,
+	[InputActionType.EditPermissionGroup]: never,
+	[InputActionType.ImportBlueprintString]: never,
+	[InputActionType.ImportPermissionsString]: never,
+	[InputActionType.ReloadScript]: never,
+	[InputActionType.ReloadScriptDataTooLarge]: never,
+	[InputActionType.GuiElemChanged]: never,
+	[InputActionType.BlueprintTransferQueueUpdate]: never,
+	[InputActionType.DragTrainSchedule]: never,
+	[InputActionType.DragTrainWaitCondition]: never,
+	[InputActionType.SelectItem]: never,
+	[InputActionType.SelectEntitySlot]: never,
+	[InputActionType.SelectTileSlot]: never,
+	[InputActionType.SelectMapperSlot]: never,
+	[InputActionType.DisplayResolutionChanged]: never,
+	[InputActionType.QuickBarSetSlot]: never,
+	[InputActionType.QuickBarPickSlot]: never,
+	[InputActionType.QuickBarSetSelectedPage]: never,
+	[InputActionType.PlayerLeaveGame]: DisconnectReason,
+	[InputActionType.MapEditorAction]: never,
+	[InputActionType.PutSpecialItemInMap]: never,
+	[InputActionType.PutSpecialRecordInMap]: never,
+	[InputActionType.ChangeMultiplayerConfig]: never,
+	[InputActionType.AdminAction]: never,
+	[InputActionType.LuaShortcut]: never,
+	[InputActionType.TranslateString]: never,
+	[InputActionType.FlushOpenedEntitySpecificFluid]: never,
+	[InputActionType.ChangePickingState]: never,
+	[InputActionType.SelectedEntityChangedVeryClose]: number,
+	[InputActionType.SelectedEntityChangedVeryClosePrecise]: number,
+	[InputActionType.SelectedEntityChangedRelative]: number,
+	[InputActionType.SelectedEntityChangedBasedOnUnitNumber]: number,
+	[InputActionType.SetAutosortInventory]: never,
+	[InputActionType.SetFlatControllerGui]: never,
+	[InputActionType.SetRecipeNotifications]: never,
+	[InputActionType.SetAutoLaunchRocket]: never,
+	[InputActionType.SwitchConstantCombinatorState]: never,
+	[InputActionType.SwitchPowerSwitchState]: never,
+	[InputActionType.SwitchInserterFilterModeState]: never,
+	[InputActionType.SwitchConnectToLogisticNetwork]: never,
+	[InputActionType.SetBehaviorMode]: never,
+	[InputActionType.FastEntityTransfer]: never,
+	[InputActionType.RotateEntity]: never,
+	[InputActionType.FastEntitySplit]: never,
+	[InputActionType.SetTrainStopped]: never,
+	[InputActionType.ChangeControllerSpeed]: never,
+	[InputActionType.SetAllowCommands]: never,
+	[InputActionType.SetResearchFinishedStopsGame]: never,
+	[InputActionType.SetInserterMaxStackSize]: never,
+	[InputActionType.OpenTrainGui]: never,
+	[InputActionType.SetEntityColor]: never,
+	[InputActionType.SetDeconstructionItemTreesAndRocksOnly]: never,
+	[InputActionType.SetDeconstructionItemTileSelectionMode]: never,
+	[InputActionType.DeleteCustomTag]: never,
+	[InputActionType.DeletePermissionGroup]: never,
+	[InputActionType.AddPermissionGroup]: never,
+	[InputActionType.SetInfinityContainerRemoveUnfilteredItems]: never,
+	[InputActionType.SetCarWeaponsControl]: never,
+	[InputActionType.SetRequestFromBuffers]: never,
+	[InputActionType.ChangeActiveQuickBar]: never,
+	[InputActionType.OpenPermissionsGui]: never,
+	[InputActionType.DisplayScaleChanged]: never,
+	[InputActionType.SetSplitterPriority]: never,
+	[InputActionType.GrabInternalBlueprintFromText]: never,
+	[InputActionType.SetHeatInterfaceTemperature]: never,
+	[InputActionType.SetHeatInterfaceMode]: never,
+	[InputActionType.OpenTrainStationGui]: never,
+	[InputActionType.RemoveTrainStation]: never,
+	[InputActionType.GoToTrainStation]: never,
+	[InputActionType.RenderModeChanged]: never,
+	[InputActionType.SetPlayerColor]: never,
+	[InputActionType.PlayerClickedGpsTag]: never,
+	[InputActionType.SetTrainsLimit]: never,
+	[InputActionType.ClearRecipeNotification]: never,
+	[InputActionType.SetLinkedContainerLinkID]: never,
+};
+
+const emptyDuplex = { read: () => undefined, write: () => {} };
+const notImplementedDuplex = {
+	read: () => { throw new Error("Not implemented"); },
+	write: () => { throw new Error("Not implemented"); },
+};
+
+const inputActionDuplex: DuplexTable<InputActionType, InputActionValueType> = {
+	[InputActionType.Nothing]: emptyDuplex,
+	[InputActionType.StopWalking]: emptyDuplex,
+	[InputActionType.BeginMining]: emptyDuplex,
+	[InputActionType.StopMining]: emptyDuplex,
+	[InputActionType.ToggleDriving]: emptyDuplex,
+	[InputActionType.OpenGui]: emptyDuplex,
+	[InputActionType.CloseGui]: emptyDuplex,
+	[InputActionType.OpenCharacterGui]: emptyDuplex,
+	[InputActionType.OpenCurrentVehicleGui]: emptyDuplex,
+	[InputActionType.ConnectRollingStock]: emptyDuplex,
+	[InputActionType.DisconnectRollingStock]: emptyDuplex,
+	[InputActionType.SelectedEntityCleared]: emptyDuplex,
+	[InputActionType.ClearCursor]: emptyDuplex,
+	[InputActionType.ResetAssemblingMachine]: emptyDuplex,
+	[InputActionType.OpenTechnologyGui]: emptyDuplex,
+	[InputActionType.LaunchRocket]: emptyDuplex,
+	[InputActionType.OpenProductionGui]: emptyDuplex,
+	[InputActionType.StopRepair]: emptyDuplex,
+	[InputActionType.CancelNewBlueprint]: emptyDuplex,
+	[InputActionType.CloseBlueprintRecord]: emptyDuplex,
+	[InputActionType.CopyEntitySettings]: emptyDuplex,
+	[InputActionType.PasteEntitySettings]: emptyDuplex,
+	[InputActionType.DestroyOpenedItem]: emptyDuplex,
+	[InputActionType.CopyOpenedItem]: emptyDuplex,
+	[InputActionType.ToggleShowEntityInfo]: emptyDuplex,
+	[InputActionType.SingleplayerInit]: emptyDuplex,
+	[InputActionType.MultiplayerInit]: emptyDuplex,
+	[InputActionType.DisconnectAllPlayers]: emptyDuplex,
+	[InputActionType.SwitchToRenameStopGui]: emptyDuplex,
+	[InputActionType.OpenBonusGui]: emptyDuplex,
+	[InputActionType.OpenTrainsGui]: emptyDuplex,
+	[InputActionType.OpenAchievementsGui]: emptyDuplex,
+	[InputActionType.CycleBlueprintBookForwards]: emptyDuplex,
+	[InputActionType.CycleBlueprintBookBackwards]: emptyDuplex,
+	[InputActionType.CycleClipboardForwards]: emptyDuplex,
+	[InputActionType.CycleClipboardBackwards]: emptyDuplex,
+	[InputActionType.StopMovementInTheNextTick]: emptyDuplex,
+	[InputActionType.ToggleEnableVehicleLogisticsWhileMoving]: emptyDuplex,
+	[InputActionType.ToggleDeconstructionItemEntityFilterMode]: emptyDuplex,
+	[InputActionType.ToggleDeconstructionItemTileFilterMode]: emptyDuplex,
+	[InputActionType.OpenLogisticGui]: emptyDuplex,
+	[InputActionType.SelectNextValidGun]: emptyDuplex,
+	[InputActionType.ToggleMapEditor]: emptyDuplex,
+	[InputActionType.DeleteBlueprintLibrary]: emptyDuplex,
+	[InputActionType.GameCreatedFromScenario]: emptyDuplex,
+	[InputActionType.ActivateCopy]: emptyDuplex,
+	[InputActionType.ActivateCut]: emptyDuplex,
+	[InputActionType.ActivatePaste]: emptyDuplex,
+	[InputActionType.Undo]: emptyDuplex,
+	[InputActionType.TogglePersonalRoboport]: emptyDuplex,
+	[InputActionType.ToggleEquipmentMovementBonus]: emptyDuplex,
+	[InputActionType.TogglePersonalLogisticRequests]: emptyDuplex,
+	[InputActionType.ToggleEntityLogisticRequests]: emptyDuplex,
+	[InputActionType.StopBuildingByMoving]: emptyDuplex,
+	[InputActionType.FlushOpenedEntityFluid]: emptyDuplex,
+	[InputActionType.ForceFullCRC]: emptyDuplex,
+
+	[InputActionType.OpenTipsAndTricksGui]: notImplementedDuplex,
+	[InputActionType.OpenBlueprintLibraryGui]: notImplementedDuplex,
+	[InputActionType.ChangeBlueprintLibraryTab]: notImplementedDuplex,
+	[InputActionType.DropItem]: notImplementedDuplex,
+	[InputActionType.Build]: notImplementedDuplex,
+	[InputActionType.StartWalking]: Direction,
+	[InputActionType.BeginMiningTerrain]: notImplementedDuplex,
+	[InputActionType.ChangeRidingState]: notImplementedDuplex,
+	[InputActionType.OpenItem]: notImplementedDuplex,
+	[InputActionType.OpenParentOfOpenedItem]: notImplementedDuplex,
+	[InputActionType.ResetItem]: notImplementedDuplex,
+	[InputActionType.DestroyItem]: notImplementedDuplex,
+	[InputActionType.OpenModItem]: notImplementedDuplex,
+	[InputActionType.OpenEquipment]: notImplementedDuplex,
+	[InputActionType.CursorTransfer]: notImplementedDuplex,
+	[InputActionType.CursorSplit]: notImplementedDuplex,
+	[InputActionType.StackTransfer]: notImplementedDuplex,
+	[InputActionType.InventoryTransfer]: notImplementedDuplex,
+	[InputActionType.CheckCRCHeuristic]: { read: readCrcData, write: writeCrcData },
+	[InputActionType.Craft]: notImplementedDuplex,
+	[InputActionType.WireDragging]: notImplementedDuplex,
+	[InputActionType.ChangeShootingState]: { read: readShootingState, write: writeShootingState },
+	[InputActionType.SetupAssemblingMachine]: notImplementedDuplex,
+	[InputActionType.SelectedEntityChanged]: notImplementedDuplex,
+	[InputActionType.SmartPipette]: notImplementedDuplex,
+	[InputActionType.StackSplit]: notImplementedDuplex,
+	[InputActionType.InventorySplit]: notImplementedDuplex,
+	[InputActionType.CancelCraft]: notImplementedDuplex,
+	[InputActionType.SetFilter]: notImplementedDuplex,
+	[InputActionType.CheckCRC]: { read: readCrcData, write: writeCrcData },
+	[InputActionType.SetCircuitCondition]: notImplementedDuplex,
+	[InputActionType.SetSignal]: notImplementedDuplex,
+	[InputActionType.StartResearch]: notImplementedDuplex,
+	[InputActionType.SetLogisticFilterItem]: notImplementedDuplex,
+	[InputActionType.SetLogisticFilterSignal]: notImplementedDuplex,
+	[InputActionType.SetCircuitModeOfOperation]: notImplementedDuplex,
+	[InputActionType.GuiClick]: notImplementedDuplex,
+	[InputActionType.GuiConfirmed]: notImplementedDuplex,
+	[InputActionType.WriteToConsole]: notImplementedDuplex,
+	[InputActionType.MarketOffer]: notImplementedDuplex,
+	[InputActionType.AddTrainStation]: notImplementedDuplex,
+	[InputActionType.ChangeTrainStopStation]: notImplementedDuplex,
+	[InputActionType.ChangeActiveItemGroupForCrafting]: notImplementedDuplex,
+	[InputActionType.ChangeActiveItemGroupForFilters]: notImplementedDuplex,
+	[InputActionType.ChangeActiveCharacterTab]: notImplementedDuplex,
+	[InputActionType.GuiTextChanged]: notImplementedDuplex,
+	[InputActionType.GuiCheckedStateChanged]: notImplementedDuplex,
+	[InputActionType.GuiSelectionStateChanged]: notImplementedDuplex,
+	[InputActionType.GuiSelectedTabChanged]: notImplementedDuplex,
+	[InputActionType.GuiValueChanged]: notImplementedDuplex,
+	[InputActionType.GuiSwitchStateChanged]: notImplementedDuplex,
+	[InputActionType.GuiLocationChanged]: notImplementedDuplex,
+	[InputActionType.PlaceEquipment]: notImplementedDuplex,
+	[InputActionType.TakeEquipment]: notImplementedDuplex,
+	[InputActionType.UseItem]: notImplementedDuplex,
+	[InputActionType.SendSpidertron]: notImplementedDuplex,
+	[InputActionType.UseArtilleryRemote]: notImplementedDuplex,
+	[InputActionType.SetInventoryBar]: notImplementedDuplex,
+	[InputActionType.MoveOnZoom]: notImplementedDuplex,
+	[InputActionType.StartRepair]: notImplementedDuplex,
+	[InputActionType.Deconstruct]: notImplementedDuplex,
+	[InputActionType.Upgrade]: notImplementedDuplex,
+	[InputActionType.Copy]: notImplementedDuplex,
+	[InputActionType.AlternativeCopy]: notImplementedDuplex,
+	[InputActionType.SelectBlueprintEntities]: notImplementedDuplex,
+	[InputActionType.AltSelectBlueprintEntities]: notImplementedDuplex,
+	[InputActionType.SetupBlueprint]: notImplementedDuplex,
+	[InputActionType.SetupSingleBlueprintRecord]: notImplementedDuplex,
+	[InputActionType.CopyOpenedBlueprint]: notImplementedDuplex,
+	[InputActionType.ReassignBlueprint]: notImplementedDuplex,
+	[InputActionType.OpenBlueprintRecord]: notImplementedDuplex,
+	[InputActionType.GrabBlueprintRecord]: notImplementedDuplex,
+	[InputActionType.DropBlueprintRecord]: notImplementedDuplex,
+	[InputActionType.DeleteBlueprintRecord]: notImplementedDuplex,
+	[InputActionType.UpgradeOpenedBlueprintByRecord]: notImplementedDuplex,
+	[InputActionType.UpgradeOpenedBlueprintByItem]: notImplementedDuplex,
+	[InputActionType.SpawnItem]: notImplementedDuplex,
+	[InputActionType.SpawnItemStackTransfer]: notImplementedDuplex,
+	[InputActionType.UpdateBlueprintShelf]: notImplementedDuplex,
+	[InputActionType.TransferBlueprint]: notImplementedDuplex,
+	[InputActionType.TransferBlueprintImmediately]: notImplementedDuplex,
+	[InputActionType.EditBlueprintToolPreview]: notImplementedDuplex,
+	[InputActionType.RemoveCables]: notImplementedDuplex,
+	[InputActionType.ExportBlueprint]: notImplementedDuplex,
+	[InputActionType.ImportBlueprint]: notImplementedDuplex,
+	[InputActionType.ImportBlueprintsFiltered]: notImplementedDuplex,
+	[InputActionType.PlayerJoinGame]: { read: readPlayerJoinGameData, write: writePlayerJoinGameData },
+	[InputActionType.PlayerAdminChange]: notImplementedDuplex,
+	[InputActionType.CancelDeconstruct]: notImplementedDuplex,
+	[InputActionType.CancelUpgrade]: notImplementedDuplex,
+	[InputActionType.ChangeArithmeticCombinatorParameters]: notImplementedDuplex,
+	[InputActionType.ChangeDeciderCombinatorParameters]: notImplementedDuplex,
+	[InputActionType.ChangeProgrammableSpeakerParameters]: notImplementedDuplex,
+	[InputActionType.ChangeProgrammableSpeakerAlertParameters]: notImplementedDuplex,
+	[InputActionType.ChangeProgrammableSpeakerCircuitParameters]: notImplementedDuplex,
+	[InputActionType.SetVehicleAutomaticTargetingParameters]: notImplementedDuplex,
+	[InputActionType.BuildTerrain]: notImplementedDuplex,
+	[InputActionType.ChangeTrainWaitCondition]: notImplementedDuplex,
+	[InputActionType.ChangeTrainWaitConditionData]: notImplementedDuplex,
+	[InputActionType.CustomInput]: notImplementedDuplex,
+	[InputActionType.ChangeItemLabel]: notImplementedDuplex,
+	[InputActionType.ChangeItemDescription]: notImplementedDuplex,
+	[InputActionType.ChangeEntityLabel]: notImplementedDuplex,
+	[InputActionType.BuildRail]: notImplementedDuplex,
+	[InputActionType.CancelResearch]: notImplementedDuplex,
+	[InputActionType.SelectArea]: notImplementedDuplex,
+	[InputActionType.AltSelectArea]: notImplementedDuplex,
+	[InputActionType.ReverseSelectArea]: notImplementedDuplex,
+	[InputActionType.ServerCommand]: { read: readServerCommandData, write: writeServerCommandData },
+	[InputActionType.SetControllerLogisticTrashFilterItem]: notImplementedDuplex,
+	[InputActionType.SetEntityLogisticTrashFilterItem]: notImplementedDuplex,
+	[InputActionType.SetInfinityContainerFilterItem]: notImplementedDuplex,
+	[InputActionType.SetInfinityPipeFilter]: notImplementedDuplex,
+	[InputActionType.ModSettingsChanged]: notImplementedDuplex,
+	[InputActionType.SetEntityEnergyProperty]: notImplementedDuplex,
+	[InputActionType.EditCustomTag]: notImplementedDuplex,
+	[InputActionType.EditPermissionGroup]: notImplementedDuplex,
+	[InputActionType.ImportBlueprintString]: notImplementedDuplex,
+	[InputActionType.ImportPermissionsString]: notImplementedDuplex,
+	[InputActionType.ReloadScript]: notImplementedDuplex,
+	[InputActionType.ReloadScriptDataTooLarge]: notImplementedDuplex,
+	[InputActionType.GuiElemChanged]: notImplementedDuplex,
+	[InputActionType.BlueprintTransferQueueUpdate]: notImplementedDuplex,
+	[InputActionType.DragTrainSchedule]: notImplementedDuplex,
+	[InputActionType.DragTrainWaitCondition]: notImplementedDuplex,
+	[InputActionType.SelectItem]: notImplementedDuplex,
+	[InputActionType.SelectEntitySlot]: notImplementedDuplex,
+	[InputActionType.SelectTileSlot]: notImplementedDuplex,
+	[InputActionType.SelectMapperSlot]: notImplementedDuplex,
+	[InputActionType.DisplayResolutionChanged]: notImplementedDuplex,
+	[InputActionType.QuickBarSetSlot]: notImplementedDuplex,
+	[InputActionType.QuickBarPickSlot]: notImplementedDuplex,
+	[InputActionType.QuickBarSetSelectedPage]: notImplementedDuplex,
+	[InputActionType.PlayerLeaveGame]: { read: readUInt8, write: writeUInt8 },
+	[InputActionType.MapEditorAction]: notImplementedDuplex,
+	[InputActionType.PutSpecialItemInMap]: notImplementedDuplex,
+	[InputActionType.PutSpecialRecordInMap]: notImplementedDuplex,
+	[InputActionType.ChangeMultiplayerConfig]: notImplementedDuplex,
+	[InputActionType.AdminAction]: notImplementedDuplex,
+	[InputActionType.LuaShortcut]: notImplementedDuplex,
+	[InputActionType.TranslateString]: notImplementedDuplex,
+	[InputActionType.FlushOpenedEntitySpecificFluid]: notImplementedDuplex,
+	[InputActionType.ChangePickingState]: notImplementedDuplex,
+	[InputActionType.SelectedEntityChangedVeryClose]: { read: readUInt8, write: writeUInt8 },
+	[InputActionType.SelectedEntityChangedVeryClosePrecise]: { read: readUInt16, write: writeUInt16 },
+	[InputActionType.SelectedEntityChangedRelative]: { read: readUInt32, write: writeUInt32 },
+	[InputActionType.SelectedEntityChangedBasedOnUnitNumber]: { read: readUInt32, write: writeUInt32 },
+	[InputActionType.SetAutosortInventory]: notImplementedDuplex,
+	[InputActionType.SetFlatControllerGui]: notImplementedDuplex,
+	[InputActionType.SetRecipeNotifications]: notImplementedDuplex,
+	[InputActionType.SetAutoLaunchRocket]: notImplementedDuplex,
+	[InputActionType.SwitchConstantCombinatorState]: notImplementedDuplex,
+	[InputActionType.SwitchPowerSwitchState]: notImplementedDuplex,
+	[InputActionType.SwitchInserterFilterModeState]: notImplementedDuplex,
+	[InputActionType.SwitchConnectToLogisticNetwork]: notImplementedDuplex,
+	[InputActionType.SetBehaviorMode]: notImplementedDuplex,
+	[InputActionType.FastEntityTransfer]: notImplementedDuplex,
+	[InputActionType.RotateEntity]: notImplementedDuplex,
+	[InputActionType.FastEntitySplit]: notImplementedDuplex,
+	[InputActionType.SetTrainStopped]: notImplementedDuplex,
+	[InputActionType.ChangeControllerSpeed]: notImplementedDuplex,
+	[InputActionType.SetAllowCommands]: notImplementedDuplex,
+	[InputActionType.SetResearchFinishedStopsGame]: notImplementedDuplex,
+	[InputActionType.SetInserterMaxStackSize]: notImplementedDuplex,
+	[InputActionType.OpenTrainGui]: notImplementedDuplex,
+	[InputActionType.SetEntityColor]: notImplementedDuplex,
+	[InputActionType.SetDeconstructionItemTreesAndRocksOnly]: notImplementedDuplex,
+	[InputActionType.SetDeconstructionItemTileSelectionMode]: notImplementedDuplex,
+	[InputActionType.DeleteCustomTag]: notImplementedDuplex,
+	[InputActionType.DeletePermissionGroup]: notImplementedDuplex,
+	[InputActionType.AddPermissionGroup]: notImplementedDuplex,
+	[InputActionType.SetInfinityContainerRemoveUnfilteredItems]: notImplementedDuplex,
+	[InputActionType.SetCarWeaponsControl]: notImplementedDuplex,
+	[InputActionType.SetRequestFromBuffers]: notImplementedDuplex,
+	[InputActionType.ChangeActiveQuickBar]: notImplementedDuplex,
+	[InputActionType.OpenPermissionsGui]: notImplementedDuplex,
+	[InputActionType.DisplayScaleChanged]: notImplementedDuplex,
+	[InputActionType.SetSplitterPriority]: notImplementedDuplex,
+	[InputActionType.GrabInternalBlueprintFromText]: notImplementedDuplex,
+	[InputActionType.SetHeatInterfaceTemperature]: notImplementedDuplex,
+	[InputActionType.SetHeatInterfaceMode]: notImplementedDuplex,
+	[InputActionType.OpenTrainStationGui]: notImplementedDuplex,
+	[InputActionType.RemoveTrainStation]: notImplementedDuplex,
+	[InputActionType.GoToTrainStation]: notImplementedDuplex,
+	[InputActionType.RenderModeChanged]: notImplementedDuplex,
+	[InputActionType.SetPlayerColor]: notImplementedDuplex,
+	[InputActionType.PlayerClickedGpsTag]: notImplementedDuplex,
+	[InputActionType.SetTrainsLimit]: notImplementedDuplex,
+	[InputActionType.ClearRecipeNotification]: notImplementedDuplex,
+	[InputActionType.SetLinkedContainerLinkID]: notImplementedDuplex,
+};
+
 export type CrcData = { crc: number, tickOfCrc: number };
+export function readCrcData(stream: ReadableStream) {
+	return {
+		crc: readUInt32(stream),
+		tickOfCrc: readUInt32(stream),
+	};
+}
+export function writeCrcData(stream: WritableStream, data: CrcData) {
+	writeUInt32(stream, data.crc);
+	writeUInt32(stream, data.tickOfCrc);
+}
+
 export enum ShootingStateState {
 	NotShooting,
 	ShootingEnemies,
 	ShootingSelected,
 }
 export type ShootingState = { state: ShootingStateState, target: MapPosition };
+export function readShootingState(stream: ReadableStream) {
+	return {
+		state: readUInt8(stream),
+		target: MapPosition.read(stream),
+	};
+}
+export function writeShootingState(stream: WritableStream, state: ShootingState) {
+	writeUInt8(stream, state.state);
+	MapPosition.write(stream, state.target);
+}
+
 export type PlayerJoinGameData = {
 	peerID: number,
 	playerIndex: number,
@@ -272,25 +801,47 @@ export type PlayerJoinGameData = {
 	asEditor: boolean,
 	admin: boolean,
 }
+export function readPlayerJoinGameData(stream: ReadableStream) {
+	return {
+		peerID: readSpaceOptimizedUInt16(stream),
+		playerIndex: readUInt16(stream),
+		forceID: readUInt8(stream),
+		username: readUtf8String(stream),
+		asEditor: readBool(stream),
+		admin: readBool(stream),
+	};
+}
+export function writePlayerJoinGameData(stream: WritableStream, data: PlayerJoinGameData) {
+	writeSpaceOptimizedUInt16(stream, data.peerID);
+	writeUInt16(stream, data.playerIndex);
+	writeUInt8(stream, data.forceID);
+	writeUtf8String(stream, data.username);
+	writeBool(stream, data.asEditor);
+	writeBool(stream, data.admin);
+}
+
 export type ServerCommandData = {
 	command: Buffer,
 	id: number,
 	connectionID: Buffer,
 }
+export function readServerCommandData(stream: ReadableStream) {
+	return {
+		command: readString(stream),
+		id: readUInt32(stream),
+		connectionID: readBuffer(stream, 8),
+	};
+}
+export function writeServerCommandData(stream: WritableStream, data: ServerCommandData) {
+	writeString(stream, data.command);
+	writeUInt32(stream, data.id);
+	writeBuffer(stream, data.connectionID);
+}
 
-export type InputData =
-	Direction |
-	CrcData |
-	ShootingState |
-	PlayerJoinGameData |
-	ServerCommandData |
-	DisconnectReason
-;
-
-export class InputAction {
+export class InputAction<T extends InputActionType = InputActionType> {
 	constructor(
-		public type: InputActionType,
-		public data?: InputData,
+		public type: T,
+		public data: InputActionValueType[T],
 		// For convenience when creating actions to send the playerIndex can
 		// be left out which will cause FactorioClient.sendInTickClosure
 		// to set it to the client's playerIndex
@@ -305,128 +856,17 @@ export class InputAction {
 	static readPayload(stream: ReadableStream, type: InputActionType, lastPlayerIndex: number = 0) {
 		const playerIndex = (readSpaceOptimizedUInt16(stream) + lastPlayerIndex) & 0xffff;
 
-		let data;
-		switch (type) {
-			case InputActionType.Nothing:
-			case InputActionType.StopWalking:
-			case InputActionType.BeginMining:
-			case InputActionType.StopMining:
-			case InputActionType.ToggleDriving:
-			case InputActionType.OpenGui:
-			case InputActionType.CloseGui:
-			case InputActionType.OpenCharacterGui:
-			case InputActionType.OpenCurrentVehicleGui:
-			case InputActionType.ConnectRollingStock:
-			case InputActionType.DisconnectRollingStock:
-			case InputActionType.SelectedEntityCleared:
-			case InputActionType.ClearCursor:
-			case InputActionType.ResetAssemblingMachine:
-			case InputActionType.OpenTechnologyGui:
-			case InputActionType.LaunchRocket:
-			case InputActionType.OpenProductionGui:
-			case InputActionType.StopRepair:
-			case InputActionType.CancelNewBlueprint:
-			case InputActionType.CloseBlueprintRecord:
-			case InputActionType.CopyEntitySettings:
-			case InputActionType.PasteEntitySettings:
-			case InputActionType.DestroyOpenedItem:
-			case InputActionType.CopyOpenedItem:
-			case InputActionType.ToggleShowEntityInfo:
-			case InputActionType.SingleplayerInit:
-			case InputActionType.MultiplayerInit:
-			case InputActionType.DisconnectAllPlayers:
-			case InputActionType.SwitchToRenameStopGui:
-			case InputActionType.OpenBonusGui:
-			case InputActionType.OpenTrainsGui:
-			case InputActionType.OpenAchievementsGui:
-			case InputActionType.CycleBlueprintBookForwards:
-			case InputActionType.CycleBlueprintBookBackwards:
-			case InputActionType.CycleClipboardForwards:
-			case InputActionType.CycleClipboardBackwards:
-			case InputActionType.StopMovementInTheNextTick:
-			case InputActionType.ToggleEnableVehicleLogisticsWhileMoving:
-			case InputActionType.ToggleDeconstructionItemEntityFilterMode:
-			case InputActionType.ToggleDeconstructionItemTileFilterMode:
-			case InputActionType.OpenLogisticGui:
-			case InputActionType.SelectNextValidGun:
-			case InputActionType.ToggleMapEditor:
-			case InputActionType.DeleteBlueprintLibrary:
-			case InputActionType.GameCreatedFromScenario:
-			case InputActionType.ActivateCopy:
-			case InputActionType.ActivateCut:
-			case InputActionType.ActivatePaste:
-			case InputActionType.Undo:
-			case InputActionType.TogglePersonalRoboport:
-			case InputActionType.ToggleEquipmentMovementBonus:
-			case InputActionType.TogglePersonalLogisticRequests:
-			case InputActionType.ToggleEntityLogisticRequests:
-			case InputActionType.StopBuildingByMoving:
-			case InputActionType.FlushOpenedEntityFluid:
-			case InputActionType.ForceFullCRC:
-				break; // No data
-
-			case InputActionType.StartWalking:
-				data = Direction.read(stream);
-				break;
-
-			case InputActionType.CheckCRCHeuristic:
-			case InputActionType.CheckCRC:
-				data = {
-					crc: readUInt32(stream),
-					tickOfCrc: readUInt32(stream),
-				};
-				break;
-
-			case InputActionType.ChangeShootingState:
-				data = {
-					state: readUInt8(stream),
-					target: MapPosition.read(stream),
-				}
-				break;
-
-			case InputActionType.PlayerJoinGame:
-				data = {
-					peerID: readSpaceOptimizedUInt16(stream),
-					playerIndex: readUInt16(stream),
-					forceID: readUInt8(stream),
-					username: readUtf8String(stream),
-					asEditor: readBool(stream),
-					admin: readBool(stream),
-				}
-				break;
-
-			case InputActionType.ServerCommand:
-				data = {
-					command: readString(stream),
-					id: readUInt32(stream),
-					connectionID: readBuffer(stream, 8),
-				}
-				break;
-
-			case InputActionType.PlayerLeaveGame:
-			case InputActionType.SelectedEntityChangedVeryClose:
-				data = readUInt8(stream);
-				break;
-
-			case InputActionType.SelectedEntityChangedVeryClosePrecise:
-				data = readUInt16(stream);
-				break;
-
-			case InputActionType.SelectedEntityChangedRelative:
-			case InputActionType.SelectedEntityChangedBasedOnUnitNumber:
-				data = readUInt32(stream);
-				break;
-
-			default:
-				throw new DecodeError(
-					`Unknown input action ${InputActionType[type]} (${type})`,
-					{ stream, inputActionType: type },
-				);
+		const duplex = inputActionDuplex[type];
+		if (duplex === notImplementedDuplex) {
+			throw new DecodeError(
+				`Unknown input action ${InputActionType[type]} (${type})`,
+				{ stream, inputActionType: type },
+			);
 		}
 
 		return new InputAction(
 			type,
-			data,
+			duplex.read(stream),
 			playerIndex,
 		);
 	}
@@ -436,128 +876,19 @@ export class InputAction {
 		this.writePayload(stream, input, lastPlayerIndex);
 	}
 
-	static writePayload(stream: WritableStream, input: InputAction, lastPlayerIndex: number) {
+	static writePayload<T extends InputActionType>(
+		stream: WritableStream, input: InputAction<T>, lastPlayerIndex: number
+	) {
 		writeSpaceOptimizedUInt16(stream, input.playerIndex! - lastPlayerIndex & 0xffff);
-
-		switch (input.type) {
-			case InputActionType.Nothing:
-			case InputActionType.StopWalking:
-			case InputActionType.BeginMining:
-			case InputActionType.StopMining:
-			case InputActionType.ToggleDriving:
-			case InputActionType.OpenGui:
-			case InputActionType.CloseGui:
-			case InputActionType.OpenCharacterGui:
-			case InputActionType.OpenCurrentVehicleGui:
-			case InputActionType.ConnectRollingStock:
-			case InputActionType.DisconnectRollingStock:
-			case InputActionType.SelectedEntityCleared:
-			case InputActionType.ClearCursor:
-			case InputActionType.ResetAssemblingMachine:
-			case InputActionType.OpenTechnologyGui:
-			case InputActionType.LaunchRocket:
-			case InputActionType.OpenProductionGui:
-			case InputActionType.StopRepair:
-			case InputActionType.CancelNewBlueprint:
-			case InputActionType.CloseBlueprintRecord:
-			case InputActionType.CopyEntitySettings:
-			case InputActionType.PasteEntitySettings:
-			case InputActionType.DestroyOpenedItem:
-			case InputActionType.CopyOpenedItem:
-			case InputActionType.ToggleShowEntityInfo:
-			case InputActionType.SingleplayerInit:
-			case InputActionType.MultiplayerInit:
-			case InputActionType.DisconnectAllPlayers:
-			case InputActionType.SwitchToRenameStopGui:
-			case InputActionType.OpenBonusGui:
-			case InputActionType.OpenTrainsGui:
-			case InputActionType.OpenAchievementsGui:
-			case InputActionType.CycleBlueprintBookForwards:
-			case InputActionType.CycleBlueprintBookBackwards:
-			case InputActionType.CycleClipboardForwards:
-			case InputActionType.CycleClipboardBackwards:
-			case InputActionType.StopMovementInTheNextTick:
-			case InputActionType.ToggleEnableVehicleLogisticsWhileMoving:
-			case InputActionType.ToggleDeconstructionItemEntityFilterMode:
-			case InputActionType.ToggleDeconstructionItemTileFilterMode:
-			case InputActionType.OpenLogisticGui:
-			case InputActionType.SelectNextValidGun:
-			case InputActionType.ToggleMapEditor:
-			case InputActionType.DeleteBlueprintLibrary:
-			case InputActionType.GameCreatedFromScenario:
-			case InputActionType.ActivateCopy:
-			case InputActionType.ActivateCut:
-			case InputActionType.ActivatePaste:
-			case InputActionType.Undo:
-			case InputActionType.TogglePersonalRoboport:
-			case InputActionType.ToggleEquipmentMovementBonus:
-			case InputActionType.TogglePersonalLogisticRequests:
-			case InputActionType.ToggleEntityLogisticRequests:
-			case InputActionType.StopBuildingByMoving:
-			case InputActionType.FlushOpenedEntityFluid:
-			case InputActionType.ForceFullCRC:
-				if (input.data !== undefined) {
-					throw new Error(
-						`Attempt to send data with empty input action ${InputActionType[input.type]}`
-					);
-				}
-				break; // No data
-
-			case InputActionType.StartWalking:
-				Direction.write(stream, input.data! as Direction);
-				break;
-
-			case InputActionType.CheckCRCHeuristic:
-			case InputActionType.CheckCRC:
-				const crcData = input.data! as CrcData;
-				writeUInt32(stream, crcData.crc);
-				writeUInt32(stream, crcData.tickOfCrc);
-				break;
-
-			case InputActionType.ChangeShootingState:
-				const shootingState = input.data! as ShootingState;
-				writeUInt8(stream, shootingState.state);
-				MapPosition.write(stream, shootingState.target);
-				break;
-
-			case InputActionType.PlayerJoinGame:
-				const playerJoinData = input.data! as PlayerJoinGameData;
-				writeSpaceOptimizedUInt16(stream, playerJoinData.peerID);
-				writeUInt16(stream, playerJoinData.playerIndex);
-				writeUInt8(stream, playerJoinData.forceID);
-				writeUtf8String(stream, playerJoinData.username);
-				writeBool(stream, playerJoinData.asEditor);
-				writeBool(stream, playerJoinData.admin);
-				break;
-
-			case InputActionType.ServerCommand:
-				const serverCommandData = input.data! as ServerCommandData;
-				writeString(stream, serverCommandData.command);
-				writeUInt32(stream, serverCommandData.id);
-				writeBuffer(stream, serverCommandData.connectionID);
-				break;
-
-			case InputActionType.PlayerLeaveGame:
-			case InputActionType.SelectedEntityChangedVeryClose:
-				writeUInt8(stream, input.data! as number);
-				break;
-
-			case InputActionType.SelectedEntityChangedVeryClosePrecise:
-				writeUInt16(stream, input.data! as number);
-				break;
-
-			case InputActionType.SelectedEntityChangedRelative:
-			case InputActionType.SelectedEntityChangedBasedOnUnitNumber:
-				writeUInt32(stream, input.data! as number);
-				break;
-
-
-			default:
-				throw new EncodeError(
-					`Unknown input action ${InputActionType[input.type]} (${input.type})`,
-					{ stream, target: input },
-				);
+		const duplex = inputActionDuplex[input.type];
+		if (duplex as unknown === notImplementedDuplex) {
+			throw new EncodeError(
+				`Unknown input action ${InputActionType[input.type]} (${input.type})`,
+				{ stream, target: input },
+			);
 		}
+
+		duplex.write(stream, input.data);
 	}
 }
 
@@ -592,5 +923,3 @@ export class InputActionSegment {
 		writeString(stream, segment.payload);
 	}
 }
-
-
