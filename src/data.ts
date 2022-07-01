@@ -1,8 +1,8 @@
 import { DuplexTable } from "./types"
 import {
 	ReadableStream, Reader, WritableStream, Writer,
-	readBool, readUInt8, readUInt16, readUInt32, readDouble, readSpaceOptimizedUInt16, readUtf8String,
-	writeBool, writeUInt8, writeUInt16, writeUInt32, writeDouble, writeSpaceOptimizedUInt16, writeUtf8String,
+	readBool, readUInt8, readUInt16, readInt32, readUInt32, readDouble, readSpaceOptimizedUInt16, readUtf8String,
+	writeBool, writeUInt8, writeUInt16, writeInt32, writeUInt32, writeDouble, writeSpaceOptimizedUInt16, writeUtf8String,
 } from "./stream";
 
 export class Version {
@@ -198,6 +198,25 @@ export class Direction {
 			value += ((direction.targetValue + 1) << 4);
 		}
 		writeUInt8(stream, value);
+	}
+}
+
+export class MapPosition {
+	constructor(
+		public x: number,
+		public y: number,
+	) { }
+
+	static read(stream: ReadableStream) {
+		return new MapPosition(
+			readInt32(stream) / 256,
+			readInt32(stream) / 256,
+		);
+	}
+
+	static write(stream: WritableStream, pos: MapPosition) {
+		writeInt32(stream, pos.x * 256);
+		writeInt32(stream, pos.y * 256);
 	}
 }
 

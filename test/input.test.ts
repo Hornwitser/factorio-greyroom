@@ -2,6 +2,9 @@ import {
 	FactorioClient,
 	InputActionType,
 	InputAction,
+	MapPosition,
+	ShootingState,
+	ShootingStateState,
 	SynchronizerActionType,
 	SynchronizerAction,
 	DirectionEnum,
@@ -96,6 +99,25 @@ test("start and stop mining", async () => {
 	expect(await serverInterface.sendRcon(
 		"/c rcon.print(game.connected_players[1].get_main_inventory().get_contents()['iron-ore'])"
 	)).toBe("1\n");
+});
+
+test("shooting state", async () => {
+	let offset = client.updateTick! + client.latency;
+	client.sendInTickClosure(offset + 10, new InputAction(InputActionType.ChangeShootingState,
+		{ "state": ShootingStateState.ShootingEnemies, "target": new MapPosition(0, -5) },
+	));
+	client.sendInTickClosure(offset + 80, new InputAction(InputActionType.ChangeShootingState,
+		{ "state": ShootingStateState.NotShooting, "target": new MapPosition(0, -5) },
+	));
+	client.sendInTickClosure(offset + 90, new InputAction(InputActionType.SelectedEntityCleared));
+
+	await serverInterface.sendRcon(
+		'/c biter = game.get_surface(1).create_entity{name="small-biter", position={0, -5}}'
+	);
+	await waitForInput(InputActionType.SelectedEntityCleared);
+	expect(await serverInterface.sendRcon(
+		'/c rcon.print(biter.valid) if biter.valid then biter.destroy() end'
+	)).toBe("false\n");
 });
 
 test("start and stop walking input actions", async () => {

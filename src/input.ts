@@ -5,7 +5,7 @@ import {
 	writeBool, writeUInt8, writeUInt16, writeUInt32, writeBuffer,
 	writeSpaceOptimizedUInt16, writeSpaceOptimizedUInt32, writeString, writeUtf8String,
 } from "./stream";
-import { Direction, DisconnectReason } from "./data";
+import { Direction, MapPosition, DisconnectReason } from "./data";
 
 export enum InputActionType {
 	Nothing,
@@ -258,6 +258,12 @@ export enum InputActionType {
 }
 
 export type CrcData = { crc: number, tickOfCrc: number };
+export enum ShootingStateState {
+	NotShooting,
+	ShootingEnemies,
+	ShootingSelected,
+}
+export type ShootingState = { state: ShootingStateState, target: MapPosition };
 export type PlayerJoinGameData = {
 	peerID: number,
 	playerIndex: number,
@@ -275,6 +281,7 @@ export type ServerCommandData = {
 export type InputData =
 	Direction |
 	CrcData |
+	ShootingState |
 	PlayerJoinGameData |
 	ServerCommandData |
 	DisconnectReason
@@ -368,6 +375,13 @@ export class InputAction {
 					crc: readUInt32(stream),
 					tickOfCrc: readUInt32(stream),
 				};
+				break;
+
+			case InputActionType.ChangeShootingState:
+				data = {
+					state: readUInt8(stream),
+					target: MapPosition.read(stream),
+				}
 				break;
 
 			case InputActionType.PlayerJoinGame:
@@ -498,6 +512,12 @@ export class InputAction {
 				const crcData = input.data! as CrcData;
 				writeUInt32(stream, crcData.crc);
 				writeUInt32(stream, crcData.tickOfCrc);
+				break;
+
+			case InputActionType.ChangeShootingState:
+				const shootingState = input.data! as ShootingState;
+				writeUInt8(stream, shootingState.state);
+				MapPosition.write(stream, shootingState.target);
 				break;
 
 			case InputActionType.PlayerJoinGame:
