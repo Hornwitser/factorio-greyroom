@@ -10,6 +10,7 @@ import {
 } from "../src";
 import { serverInterface } from "./server_integration";
 
+
 let client: FactorioClient;
 beforeEach(async () => {
 	client = serverInterface.createClient();
@@ -19,6 +20,18 @@ beforeEach(async () => {
 afterEach(async () => {
 	client.close();
 });
+
+function waitForInput(type: InputActionType) {
+	return new Promise<InputAction>(resolve => {
+		function check(inputAction: InputAction) {
+			if (inputAction.type === type) {
+				client.off("input_action", check);
+				resolve(inputAction);
+			}
+		}
+		client.on("input_action", check)
+	});
+}
 
 test("receives check crc heuristics", done => {
 	function check() {
@@ -34,20 +47,12 @@ test("receives check crc heuristics", done => {
 	client.on("tick", check);
 });
 
-test("receives check crc", done => {
-	let force = false;
-	let checkCrc = false;
-	function check(inputAction: InputAction) {
-		if (inputAction.type === InputActionType.ForceFullCRC) { force = true; }
-		if (inputAction.type === InputActionType.CheckCRC) { checkCrc = true; }
-		if (force && checkCrc) {
-			client.off("input_action", check);
-			done();
-		}
-	}
-
-	client.on("input_action", check);
-	serverInterface.sendRcon("/c game.force_crc()");
+test("receives check crc", () => {
+	return Promise.all([
+		waitForInput(InputActionType.ForceFullCRC),
+		waitForInput(InputActionType.CheckCRC),
+		serverInterface.sendRcon("/c game.force_crc()"),
+	]);
 });
 
 test("disconnects on wrong player index", done => {
@@ -80,30 +85,14 @@ test("handles latency change", done => {
 	client.on("synchronizer_action", check);
 }, 15e3);
 
-test("start and stop walking input actions", done => {
-	function check(input: InputAction) {
-		if (input.type === InputActionType.StopWalking) {
-			serverInterface.sendRcon(
-				"/c rcon.print(serpent.line(game.connected_players[1].position))"
-			).then(response => {
-				try {
-					// Running speed is 0.15 per tick, but positions are rounded to 1/256.
-					expect(response).toBe(`{x = 0, y = ${Math.round(0.15 * 256) / 256 * 10}}\n`);
-				} finally {
-					done();
-				}
-			});
-			client.off("input_action", check)
-		}
-	}
+test("start and stop walking input actions", async () => {
+	let offset = client.updateTick! + client.latency;
+	client.sendInTickClosure(offset, new InputAction(InputActionType.StartWalking, new Direction(DirectionEnum.South)));
+	client.sendInTickClosure(offset + 10, new InputAction(InputActionType.StopWalking));
 
-	client.sendInTickClosure(
-		client.updateTick! + client.latency,
-		new InputAction(InputActionType.StartWalking, new Direction(DirectionEnum.South))
-	);
-	client.sendInTickClosure(
-		client.updateTick! + client.latency + 10,
-		new InputAction(InputActionType.StopWalking),
-	);
-	client.on("input_action", check);
+	await waitForInput(InputActionType.StopWalking);
+	expect(await serverInterface.sendRcon(
+		"/c rcon.print(serpent.line(game.connected_players[1].position))"
+	// Running speed is 0.15 per tick, but positions are rounded to 1/256.
+	)).toBe(`{x = 0, y = ${Math.round(0.15 * 256) / 256 * 10}}\n`);
 });
