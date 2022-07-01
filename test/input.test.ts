@@ -85,6 +85,19 @@ test("handles latency change", done => {
 	client.on("synchronizer_action", check);
 }, 15e3);
 
+test("start and stop mining", async () => {
+	let offset = client.updateTick! + client.latency;
+	client.sendInTickClosure(offset + 3, new InputAction(InputActionType.SelectedEntityChangedVeryClose, 0x87));
+	client.sendInTickClosure(offset + 11, new InputAction(InputActionType.BeginMining));
+	client.sendInTickClosure(offset + 165, new InputAction(InputActionType.StopMining));
+	client.sendInTickClosure(offset + 197, new InputAction(InputActionType.SelectedEntityCleared));
+
+	await waitForInput(InputActionType.SelectedEntityCleared);
+	expect(await serverInterface.sendRcon(
+		"/c rcon.print(game.connected_players[1].get_main_inventory().get_contents()['iron-ore'])"
+	)).toBe("1\n");
+});
+
 test("start and stop walking input actions", async () => {
 	let offset = client.updateTick! + client.latency;
 	client.sendInTickClosure(offset, new InputAction(InputActionType.StartWalking, new Direction(DirectionEnum.South)));

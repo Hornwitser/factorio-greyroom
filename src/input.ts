@@ -390,7 +390,17 @@ export class InputAction {
 				break;
 
 			case InputActionType.PlayerLeaveGame:
+			case InputActionType.SelectedEntityChangedVeryClose:
 				data = readUInt8(stream);
+				break;
+
+			case InputActionType.SelectedEntityChangedVeryClosePrecise:
+				data = readUInt16(stream);
+				break;
+
+			case InputActionType.SelectedEntityChangedRelative:
+			case InputActionType.SelectedEntityChangedBasedOnUnitNumber:
+				data = readUInt32(stream);
 				break;
 
 			default:
@@ -508,8 +518,19 @@ export class InputAction {
 				break;
 
 			case InputActionType.PlayerLeaveGame:
-				writeUInt8(stream, input.data! as DisconnectReason);
+			case InputActionType.SelectedEntityChangedVeryClose:
+				writeUInt8(stream, input.data! as number);
 				break;
+
+			case InputActionType.SelectedEntityChangedVeryClosePrecise:
+				writeUInt16(stream, input.data! as number);
+				break;
+
+			case InputActionType.SelectedEntityChangedRelative:
+			case InputActionType.SelectedEntityChangedBasedOnUnitNumber:
+				writeUInt32(stream, input.data! as number);
+				break;
+
 
 			default:
 				throw new EncodeError(
