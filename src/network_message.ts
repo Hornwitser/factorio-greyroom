@@ -1,5 +1,5 @@
 import {
-	ReadableStream, WritableStream, Streamable,
+	Readable, Writable, Streamable,
 	readUInt8, readUInt16, readUInt32, readSpaceOptimizedUInt16, readSpaceOptimizedUInt32,
 	readBuffer, readUtf8String, readArray, readMap,
 	writeUInt8, writeUInt16, writeUInt32, writeSpaceOptimizedUInt16, writeSpaceOptimizedUInt32,
@@ -42,14 +42,14 @@ export class ConnectionRequest implements AbstractNetworkMessage {
 		public connectionRequestIDGeneratedOnClient: number,
 	) { }
 
-	static read(stream: ReadableStream) {
+	static read(stream: Readable) {
 		return new ConnectionRequest(
 			Version.read(stream),
 			readUInt32(stream),
 		);
 	}
 
-	static write(stream: WritableStream, message: ConnectionRequest) {
+	static write(stream: Writable, message: ConnectionRequest) {
 		Version.write(stream, message.version);
 		writeUInt32(stream, message.connectionRequestIDGeneratedOnClient);
 	}
@@ -63,7 +63,7 @@ export class ConnectionRequestReply implements AbstractNetworkMessage {
 		public connectionRequestIDGeneratedOnServer: number,
 	) { }
 
-	static read(stream: ReadableStream) {
+	static read(stream: Readable) {
 		return new ConnectionRequestReply(
 			Version.read(stream),
 			readUInt32(stream),
@@ -71,7 +71,7 @@ export class ConnectionRequestReply implements AbstractNetworkMessage {
 		);
 	}
 
-	static write(stream: WritableStream, message: ConnectionRequestReply) {
+	static write(stream: Writable, message: ConnectionRequestReply) {
 		Version.write(stream, message.version);
 		writeUInt32(stream, message.connectionRequestIDGeneratedOnClient);
 		writeUInt32(stream, message.connectionRequestIDGeneratedOnServer);
@@ -95,7 +95,7 @@ export class ConnectionRequestReplyConfirm implements AbstractNetworkMessage {
 		public startupModSettings: PropertyTree,
 	) { }
 
-	static read(stream: ReadableStream) {
+	static read(stream: Readable) {
 		return new ConnectionRequestReplyConfirm(
 			readUInt32(stream),
 			readUInt32(stream),
@@ -111,7 +111,7 @@ export class ConnectionRequestReplyConfirm implements AbstractNetworkMessage {
 		);
 	}
 
-	static write(stream: WritableStream, message: ConnectionRequestReplyConfirm) {
+	static write(stream: Writable, message: ConnectionRequestReplyConfirm) {
 		writeUInt32(stream, message.connectionRequestIDGeneratedOnClient);
 		writeUInt32(stream, message.connectionRequestIDGeneratedOnServer);
 		writeUInt32(stream, message.instanceID);
@@ -137,7 +137,7 @@ export class ClientPeerInfo {
 		public tryingToCatchUpProgress: SmallProgress,
 	) { }
 
-	static read(stream: ReadableStream) {
+	static read(stream: Readable) {
 		const username = readUtf8String(stream);
 		const flags = readUInt8(stream);
 		let droppingProgress = null;
@@ -160,7 +160,7 @@ export class ClientPeerInfo {
 		);
 	}
 
-	static write(stream: WritableStream, info: ClientPeerInfo) {
+	static write(stream: Writable, info: ClientPeerInfo) {
 		writeUtf8String(stream, info.username);
 
 		let flags = 0;
@@ -198,7 +198,7 @@ export class ClientsPeerInfo {
 		public clientPeerInfo: Map<number, ClientPeerInfo>,
 	) { }
 
-	static read(stream: ReadableStream) {
+	static read(stream: Readable) {
 		return new ClientsPeerInfo(
 			readUtf8String(stream),
 			readSmallProgress(stream),
@@ -207,7 +207,7 @@ export class ClientsPeerInfo {
 		);
 	}
 
-	static write(stream: WritableStream, infos: ClientsPeerInfo) {
+	static write(stream: Writable, infos: ClientsPeerInfo) {
 		writeUtf8String(stream, infos.serverUsername);
 		writeSmallProgress(stream, infos.mapSavingProgress);
 		writeArray(stream, infos.savingFor, writeSpaceOptimizedUInt16, writeSpaceOptimizedUInt16);
@@ -256,7 +256,7 @@ export class ConnectionAcceptOrDeny implements AbstractNetworkMessage {
 		public pausedBy: number,
 	) { }
 
-	static read(stream: ReadableStream) {
+	static read(stream: Readable) {
 		return new ConnectionAcceptOrDeny(
 			readUInt32(stream),
 			readUInt8(stream),
@@ -277,7 +277,7 @@ export class ConnectionAcceptOrDeny implements AbstractNetworkMessage {
 		);
 	}
 
-	static write(stream: WritableStream, message: ConnectionAcceptOrDeny) {
+	static write(stream: Writable, message: ConnectionAcceptOrDeny) {
 		writeUInt32(stream, message.connectionRequestIDGeneratedOnClient);
 		writeUInt8(stream, message.status);
 		writeUtf8String(stream, message.gameName);
@@ -305,7 +305,7 @@ export class TickClosure {
 		public inputActionSegments: InputActionSegment[],
 	) { }
 
-	static read(stream: ReadableStream, isEmpty: boolean) {
+	static read(stream: Readable, isEmpty: boolean) {
 		const updateTick = readUInt32(stream);
 		if (isEmpty) {
 			return new TickClosure(
@@ -339,7 +339,7 @@ export class TickClosure {
 		)
 	}
 
-	static write(stream: WritableStream, closure: TickClosure, writeEmpty: boolean) {
+	static write(stream: Writable, closure: TickClosure, writeEmpty: boolean) {
 		writeUInt32(stream, closure.updateTick);
 		if (writeEmpty) {
 			return;
@@ -371,7 +371,7 @@ export class Heartbeat {
 		public requestsForHeartbeat: number[],
 	) { }
 
-	static read(stream: ReadableStream, isServer: boolean) {
+	static read(stream: Readable, isServer: boolean) {
 		const flags = readUInt8(stream);
 		const hasHeartbeatRequests = Boolean(flags & 0x01);
 		const hasTickClosures = Boolean(flags & 0x02);
@@ -418,7 +418,7 @@ export class Heartbeat {
 		);
 	}
 
-	static write(stream: WritableStream, heartbeat: Heartbeat, isServer: boolean) {
+	static write(stream: Writable, heartbeat: Heartbeat, isServer: boolean) {
 		const hasHeartbeatRequests = heartbeat.requestsForHeartbeat.length > 0;
 		const hasTickClosures = heartbeat.tickClosures.length > 0;
 		const hasSingleTickClosure = heartbeat.tickClosures.length == 1;
@@ -470,11 +470,11 @@ export class ClientToServerHeartbeat implements AbstractNetworkMessage {
 		public heartbeat: Heartbeat,
 	) { }
 
-	static read(stream: ReadableStream) {
+	static read(stream: Readable) {
 		return new ClientToServerHeartbeat(Heartbeat.read(stream, false));
 	}
 
-	static write(stream: WritableStream, message: ClientToServerHeartbeat) {
+	static write(stream: Writable, message: ClientToServerHeartbeat) {
 		Heartbeat.write(stream, message.heartbeat, false);
 	}
 }
@@ -486,11 +486,11 @@ export class ServerToClientHeartbeat implements AbstractNetworkMessage {
 		public heartbeat: Heartbeat,
 	) { }
 
-	static read(stream: ReadableStream) {
+	static read(stream: Readable) {
 		return new ServerToClientHeartbeat(Heartbeat.read(stream, true));
 	}
 
-	static write(stream: WritableStream, message: ServerToClientHeartbeat) {
+	static write(stream: Writable, message: ServerToClientHeartbeat) {
 		Heartbeat.write(stream, message.heartbeat, true);
 	}
 }
@@ -502,11 +502,11 @@ export class TransferBlockRequest implements AbstractNetworkMessage {
 		public blockNumber: number,
 	) { }
 
-	static read(stream: ReadableStream) {
+	static read(stream: Readable) {
 		return new TransferBlockRequest(readUInt32(stream));
 	}
 
-	static write(stream: WritableStream, message: TransferBlockRequest) {
+	static write(stream: Writable, message: TransferBlockRequest) {
 		writeUInt32(stream, message.blockNumber);
 	}
 }
@@ -519,11 +519,11 @@ export class TransferBlock implements AbstractNetworkMessage {
 		public data: Buffer,
 	) { }
 
-	static read(stream: ReadableStream) {
+	static read(stream: Readable) {
 		return new TransferBlock(readUInt32(stream), readBuffer(stream));
 	}
 
-	static write(stream: WritableStream, message: TransferBlock) {
+	static write(stream: Writable, message: TransferBlock) {
 		writeUInt32(stream, message.blockNumber);
 		writeBuffer(stream, message.data);
 	}
@@ -535,12 +535,12 @@ export class TransferBlock implements AbstractNetworkMessage {
 export class Empty implements AbstractNetworkMessage {
 	readonly type = NetworkMessageType.Empty;
 
-	static read(stream: ReadableStream) {
+	static read(stream: Readable) {
 		void stream;
 		return new Empty();
 	}
 
-	static write(stream: WritableStream, message: Empty) {
+	static write(stream: Writable, message: Empty) {
 		void stream, message;
 	}
 }

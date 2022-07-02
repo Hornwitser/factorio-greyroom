@@ -1,5 +1,5 @@
 import {
-	DecodeError, ReadableStream, EncodeError, WritableStream, Streamable,
+	DecodeError, Readable, EncodeError, Writable, Streamable,
 	readBool, readUInt8, readUInt16, readUInt32, readUtf8String, readArray, readMap,
 	writeBool, writeUInt8, writeUInt16, writeUInt32, writeUtf8String, writeArray, writeMap,
 } from "./stream";
@@ -57,13 +57,13 @@ export class PeerDisconnect implements AbstractSynchronizerAction {
 		public peerID?: number,
 	) { }
 
-	static read(stream: ReadableStream) {
+	static read(stream: Readable) {
 		return new PeerDisconnect(
 			readUInt8(stream),
 		);
 	}
 
-	static write(stream: WritableStream, action: PeerDisconnect) {
+	static write(stream: Writable, action: PeerDisconnect) {
 		writeUInt8(stream, action.reason);
 	}
 }
@@ -76,13 +76,13 @@ export class NewPeerInfo implements AbstractSynchronizerAction {
 		public peerID?: number,
 	) { }
 
-	static read(stream: ReadableStream) {
+	static read(stream: Readable) {
 		return new NewPeerInfo(
 			readUtf8String(stream),
 		);
 	}
 
-	static write(stream: WritableStream, action: NewPeerInfo) {
+	static write(stream: Writable, action: NewPeerInfo) {
 		writeUtf8String(stream, action.username);
 	}
 }
@@ -119,13 +119,13 @@ export class ClientChangedState implements AbstractSynchronizerAction {
 		public peerID?: number,
 	) { }
 
-	static read(stream: ReadableStream) {
+	static read(stream: Readable) {
 		return new ClientChangedState(
 			readUInt8(stream),
 		);
 	}
 
-	static write(stream: WritableStream, action: ClientChangedState) {
+	static write(stream: Writable, action: ClientChangedState) {
 		writeUInt8(stream, action.newState);
 	}
 }
@@ -138,13 +138,13 @@ export class ClientShouldStartSendingTickClosures implements AbstractSynchronize
 		public peerID?: number,
 	) { }
 
-	static read(stream: ReadableStream) {
+	static read(stream: Readable) {
 		return new ClientShouldStartSendingTickClosures(
 			readUInt32(stream),
 		);
 	}
 
-	static write(stream: WritableStream, action: ClientShouldStartSendingTickClosures) {
+	static write(stream: Writable, action: ClientShouldStartSendingTickClosures) {
 		writeUInt32(stream, action.firstExpectedTickClosureTick);
 	}
 }
@@ -336,7 +336,7 @@ export class ScriptRegistration {
 		public onConfigurationChanged: boolean,
 	) { }
 
-	static read(stream: ReadableStream) {
+	static read(stream: Readable) {
 		return new ScriptRegistration(
 			readArray(stream, readUInt32),
 			readArray(stream, readUInt32),
@@ -347,7 +347,7 @@ export class ScriptRegistration {
 		);
 	}
 
-	static write(stream: WritableStream, reg: ScriptRegistration) {
+	static write(stream: Writable, reg: ScriptRegistration) {
 		writeArray(stream, reg.standardEvents, writeUInt32);
 		writeArray(stream, reg.nthTickEvents, writeUInt32);
 		writeArray(stream, reg.standardEventFilters, (stream, item) => {
@@ -377,7 +377,7 @@ export class MapReadyForDownload implements AbstractSynchronizerAction {
 		public peerID?: number,
 	) { }
 
-	static read(stream: ReadableStream) {
+	static read(stream: Readable) {
 		return new MapReadyForDownload(
 			readUInt32(stream),
 			readUInt32(stream),
@@ -395,7 +395,7 @@ export class MapReadyForDownload implements AbstractSynchronizerAction {
 		);
 	}
 
-	static write(stream: WritableStream, action: MapReadyForDownload) {
+	static write(stream: Writable, action: MapReadyForDownload) {
 		writeUInt32(stream, action.size);
 		writeUInt32(stream, action.auxiliarySize);
 		writeUInt32(stream, action.crc);
@@ -424,13 +424,13 @@ export class MapLoadingProgressUpdate implements AbstractSynchronizerAction {
 		public peerID?: number,
 	) { }
 
-	static read(stream: ReadableStream) {
+	static read(stream: Readable) {
 		return new MapLoadingProgressUpdate(
 			readSmallProgress(stream),
 		);
 	}
 
-	static write(stream: WritableStream, action: MapLoadingProgressUpdate) {
+	static write(stream: Writable, action: MapLoadingProgressUpdate) {
 		writeSmallProgress(stream, action.progress);
 	}
 }
@@ -443,13 +443,13 @@ export class MapSavingProgressUpdate implements AbstractSynchronizerAction {
 		public peerID?: number,
 	) { }
 
-	static read(stream: ReadableStream) {
+	static read(stream: Readable) {
 		return new MapSavingProgressUpdate(
 			readSmallProgress(stream),
 		);
 	}
 
-	static write(stream: WritableStream, action: MapSavingProgressUpdate) {
+	static write(stream: Writable, action: MapSavingProgressUpdate) {
 		writeSmallProgress(stream, action.progress);
 	}
 }
@@ -476,13 +476,13 @@ export class MapDownloadingProgressUpdate implements AbstractSynchronizerAction 
 		public peerID?: number,
 	) { }
 
-	static read(stream: ReadableStream) {
+	static read(stream: Readable) {
 		return new MapDownloadingProgressUpdate(
 			readSmallProgress(stream),
 		);
 	}
 
-	static write(stream: WritableStream, action: MapDownloadingProgressUpdate) {
+	static write(stream: Writable, action: MapDownloadingProgressUpdate) {
 		writeSmallProgress(stream, action.progress);
 	}
 }
@@ -495,13 +495,13 @@ export class CatchingUpProgressUpdate implements AbstractSynchronizerAction {
 		public peerID?: number,
 	) { }
 
-	static read(stream: ReadableStream) {
+	static read(stream: Readable) {
 		return new CatchingUpProgressUpdate(
 			readSmallProgress(stream),
 		);
 	}
 
-	static write(stream: WritableStream, action: CatchingUpProgressUpdate) {
+	static write(stream: Writable, action: CatchingUpProgressUpdate) {
 		writeSmallProgress(stream, action.progress);
 	}
 }
@@ -514,13 +514,13 @@ export class PeerDroppingProgressUpdate implements AbstractSynchronizerAction {
 		public peerID?: number,
 	) { }
 
-	static read(stream: ReadableStream) {
+	static read(stream: Readable) {
 		return new PeerDroppingProgressUpdate(
 			readSmallProgress(stream),
 		);
 	}
 
-	static write(stream: WritableStream, action: PeerDroppingProgressUpdate) {
+	static write(stream: Writable, action: PeerDroppingProgressUpdate) {
 		writeSmallProgress(stream, action.progress);
 	}
 }
@@ -575,13 +575,13 @@ export class ChangeLatency implements AbstractSynchronizerAction {
 		public peerID?: number,
 	) { }
 
-	static read(stream: ReadableStream) {
+	static read(stream: Readable) {
 		return new ChangeLatency(
 			readUInt8(stream),
 		);
 	}
 
-	static write(stream: WritableStream, action: ChangeLatency) {
+	static write(stream: Writable, action: ChangeLatency) {
 		writeUInt8(stream, action.latency);
 	}
 }
@@ -595,14 +595,14 @@ export class IncreasedLatencyConfirm implements AbstractSynchronizerAction {
 		public peerID?: number,
 	) { }
 
-	static read(stream: ReadableStream) {
+	static read(stream: Readable) {
 		return new IncreasedLatencyConfirm(
 			readUInt32(stream),
 			readUInt8(stream),
 		);
 	}
 
-	static write(stream: WritableStream, action: IncreasedLatencyConfirm) {
+	static write(stream: Writable, action: IncreasedLatencyConfirm) {
 		writeUInt32(stream, action.firstTickToSkip);
 		writeUInt8(stream, action.ticksToSkip);
 	}
@@ -617,14 +617,14 @@ export class SavingCountDown implements AbstractSynchronizerAction {
 		public peerID?: number,
 	) { }
 
-	static read(stream: ReadableStream) {
+	static read(stream: Readable) {
 		return new SavingCountDown(
 			readUInt32(stream),
 			readUInt32(stream),
 		);
 	}
 
-	static write(stream: WritableStream, action: SavingCountDown) {
+	static write(stream: Writable, action: SavingCountDown) {
 		writeUInt32(stream, action.ticksToFinish);
 		writeUInt32(stream, action.playersInQueue);
 	}
@@ -675,7 +675,7 @@ export const SynchronizerActionTypeToClass = new Map<SynchronizerActionType, Str
 	[SynchronizerActionType.SavingCountDown, SavingCountDown],
 ]);
 
-export function readSynchronizerAction(stream: ReadableStream, isServer: boolean): SynchronizerAction {
+export function readSynchronizerAction(stream: Readable, isServer: boolean): SynchronizerAction {
 	const type: SynchronizerActionType = readUInt8(stream);
 	const synchronizerClass = SynchronizerActionTypeToClass.get(type);
 	if (!synchronizerClass) {
@@ -692,7 +692,7 @@ export function readSynchronizerAction(stream: ReadableStream, isServer: boolean
 }
 
 export function writeSynchronizerAction(
-	stream: WritableStream,
+	stream: Writable,
 	synchronizerAction: SynchronizerAction,
 	isServer: boolean
 ) {

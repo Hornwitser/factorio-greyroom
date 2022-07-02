@@ -8,7 +8,11 @@ export class DecodeError extends Error {
 	}
 }
 
-export class ReadableStream {
+export interface Readable {
+	read(size?: number): Buffer,
+}
+
+export class ReadableStream implements Readable{
 	constructor(
 		public buf: Buffer,
 		public pos: number = 0,
@@ -25,9 +29,9 @@ export class ReadableStream {
 	}
 }
 
-export type Reader<T> = (stream: ReadableStream) => T;
+export type Reader<T> = (stream: Readable) => T;
 
-export function readBool(stream: ReadableStream) {
+export function readBool(stream: Readable) {
 	const buf = stream.read(1);
 	if (buf.length < 1) {
 		throw new DecodeError("End of stream reached reading bool", { stream });
@@ -38,42 +42,42 @@ export function readBool(stream: ReadableStream) {
 	}
 	return Boolean(value);
 }
-export function readUInt8(stream: ReadableStream) {
+export function readUInt8(stream: Readable) {
 	const buf = stream.read(1);
 	if (buf.length < 1) {
 		throw new DecodeError("End of stream reached reading UInt8", { stream });
 	}
 	return buf.readUInt8();
 }
-export function readUInt16(stream: ReadableStream) {
+export function readUInt16(stream: Readable) {
 	const buf = stream.read(2);
 	if (buf.length < 2) {
 		throw new DecodeError("End of stream reached reading UInt16", { stream });
 	}
 	return buf.readUInt16LE();
 }
-export function readUInt32(stream: ReadableStream) {
+export function readUInt32(stream: Readable) {
 	const buf = stream.read(4);
 	if (buf.length < 4) {
 		throw new DecodeError("End of stream reached reading UInt32", { stream });
 	}
 	return buf.readUInt32LE();
 }
-export function readInt32(stream: ReadableStream) {
+export function readInt32(stream: Readable) {
 	const buf = stream.read(4);
 	if (buf.length < 4) {
 		throw new DecodeError("End of stream reached reading Int32", { stream });
 	}
 	return buf.readInt32LE();
 }
-export function readDouble(stream: ReadableStream) {
+export function readDouble(stream: Readable) {
 	const buf = stream.read(8);
 	if (buf.length < 8) {
 		throw new DecodeError("End of stream reached reading Double", { stream });
 	}
 	return buf.readDoubleLE();
 }
-export function readBuffer(stream: ReadableStream, size?: number) {
+export function readBuffer(stream: Readable, size?: number) {
 	const buf = stream.read(size);
 	if (size !== undefined && buf.length < size) {
 		throw new DecodeError(`End of stream reached reading Buffer[${size}]`, { stream });
@@ -81,7 +85,7 @@ export function readBuffer(stream: ReadableStream, size?: number) {
 	return buf;
 }
 
-export function readSpaceOptimizedUInt16(stream: ReadableStream) {
+export function readSpaceOptimizedUInt16(stream: Readable) {
 	let value = readUInt8(stream);
 	if (value === 0xff) {
 		value = readUInt16(stream);
@@ -89,7 +93,7 @@ export function readSpaceOptimizedUInt16(stream: ReadableStream) {
 	return value;
 }
 
-export function readSpaceOptimizedUInt32(stream: ReadableStream) {
+export function readSpaceOptimizedUInt32(stream: Readable) {
 	let value = readUInt8(stream);
 	if (value === 0xff) {
 		value = readUInt32(stream);
@@ -97,18 +101,18 @@ export function readSpaceOptimizedUInt32(stream: ReadableStream) {
 	return value;
 }
 
-export function readString(stream: ReadableStream) {
+export function readString(stream: Readable) {
 	const size = readSpaceOptimizedUInt32(stream);
 	return readBuffer(stream, size);
 }
 
-export function readUtf8String(stream: ReadableStream) {
+export function readUtf8String(stream: Readable) {
 	return readString(stream).toString();
 }
 
 export function readArray<T>(
-	stream: ReadableStream,
-	readItem: (stream: ReadableStream) => T,
+	stream: Readable,
+	readItem: (stream: Readable) => T,
 	readSize = readSpaceOptimizedUInt32,
 ) {
 	let items = [];
@@ -120,9 +124,9 @@ export function readArray<T>(
 }
 
 export function readMap<K, V>(
-	stream: ReadableStream,
-	readKey: (stream: ReadableStream) => K,
-	readValue: (stream: ReadableStream) => V,
+	stream: Readable,
+	readKey: (stream: Readable) => K,
+	readValue: (stream: Readable) => V,
 	readSize = readSpaceOptimizedUInt32,
 ) {
 	let map = new Map<K, V>();
@@ -145,7 +149,11 @@ export class EncodeError extends Error {
 }
 
 
-export class WritableStream {
+export interface Writable {
+	write(buf: Buffer): void,
+}
+
+export class WritableStream implements Writable {
 	private bufs: Buffer[] = [];
 
 	write(buf: Buffer) {
@@ -157,43 +165,43 @@ export class WritableStream {
 	}
 }
 
-export type Writer<T> = (stream: WritableStream, value: T) => void;
+export type Writer<T> = (stream: Writable, value: T) => void;
 
-export function writeBool(stream: WritableStream, value: boolean) {
+export function writeBool(stream: Writable, value: boolean) {
 	const buf = Buffer.alloc(1);
 	buf.writeUInt8(Number(value));
 	stream.write(buf);
 }
-export function writeUInt8(stream: WritableStream, value: number) {
+export function writeUInt8(stream: Writable, value: number) {
 	const buf = Buffer.alloc(1);
 	buf.writeUInt8(value);
 	stream.write(buf);
 }
-export function writeUInt16(stream: WritableStream, value: number) {
+export function writeUInt16(stream: Writable, value: number) {
 	const buf = Buffer.alloc(2);
 	buf.writeUInt16LE(value);
 	stream.write(buf);
 }
-export function writeUInt32(stream: WritableStream, value: number) {
+export function writeUInt32(stream: Writable, value: number) {
 	const buf = Buffer.alloc(4);
 	buf.writeUInt32LE(value);
 	stream.write(buf);
 }
-export function writeInt32(stream: WritableStream, value: number) {
+export function writeInt32(stream: Writable, value: number) {
 	const buf = Buffer.alloc(4);
 	buf.writeInt32LE(value);
 	stream.write(buf);
 }
-export function writeDouble(stream: WritableStream, value: number) {
+export function writeDouble(stream: Writable, value: number) {
 	const buf = Buffer.alloc(8);
 	buf.writeDoubleLE(value);
 	stream.write(buf);
 }
-export function writeBuffer(stream: WritableStream, buf: Buffer) {
+export function writeBuffer(stream: Writable, buf: Buffer) {
 	stream.write(buf);
 }
 
-export function writeSpaceOptimizedUInt16(stream: WritableStream, value: number) {
+export function writeSpaceOptimizedUInt16(stream: Writable, value: number) {
 	if (value > 0xff) {
 		writeUInt8(stream, 0xff);
 		writeUInt16(stream, value);
@@ -202,7 +210,7 @@ export function writeSpaceOptimizedUInt16(stream: WritableStream, value: number)
 	}
 }
 
-export function writeSpaceOptimizedUInt32(stream: WritableStream, value: number) {
+export function writeSpaceOptimizedUInt32(stream: Writable, value: number) {
 	if (value > 0xff) {
 		writeUInt8(stream, 0xff);
 		writeUInt32(stream, value);
@@ -211,17 +219,17 @@ export function writeSpaceOptimizedUInt32(stream: WritableStream, value: number)
 	}
 }
 
-export function writeString(stream: WritableStream, str: Buffer) {
+export function writeString(stream: Writable, str: Buffer) {
 	writeSpaceOptimizedUInt32(stream, str.length);
 	writeBuffer(stream, str);
 }
 
-export function writeUtf8String(stream: WritableStream, str: string) {
+export function writeUtf8String(stream: Writable, str: string) {
 	writeString(stream, Buffer.from(str));
 }
 
 export function writeArray<T>(
-	stream: WritableStream,
+	stream: Writable,
 	items: T[],
 	writeItem: Writer<T>,
 	writeSize: Writer<number> = writeSpaceOptimizedUInt32,
@@ -233,7 +241,7 @@ export function writeArray<T>(
 }
 
 export function writeMap<K, V>(
-	stream: WritableStream,
+	stream: Writable,
 	map: Map<K, V>,
 	writeKey: Writer<K>,
 	writeValue: Writer<V>,
@@ -247,6 +255,10 @@ export function writeMap<K, V>(
 }
 
 export interface Streamable<T> {
-	read(stream: ReadableStream): T,
-	write(stream: WritableStream, value: T): void,
+	read(stream: Readable): T,
+	write(stream: Writable, value: T): void,
 }
+
+export type StreamableLookupTable<Enum extends number, ValueType extends Record<Enum, any>> = {
+	[T in Enum]: Streamable<ValueType[T]>;
+};

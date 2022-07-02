@@ -1,6 +1,6 @@
 import { NetworkMessageType } from "./network_message";
 import {
-	ReadableStream, WritableStream,
+	Readable, Writable,
 	readUInt8, readUInt16, readBuffer, writeUInt8, writeUInt16, writeBuffer
 } from "./stream";
 
@@ -22,7 +22,7 @@ export default class NetworkFrame {
 		public confirmRecords: [number, number][] = [],
 	) { }
 
-	static read(stream: ReadableStream) {
+	static read(stream: Readable) {
 		const flags = readUInt8(stream);
 		const messageType = flags & 0x1f;
 		const random = Boolean(flags & 0x20);
@@ -62,7 +62,7 @@ export default class NetworkFrame {
 		);
 	}
 
-	write(stream: WritableStream) {
+	write(stream: Writable) {
 		let flags = this.messageType;
 		flags |= Number(this.random) * 0x20;
 		flags |= Number(this.fragmented) * 0x40;

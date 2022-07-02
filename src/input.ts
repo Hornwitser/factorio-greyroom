@@ -1,6 +1,5 @@
-import { DuplexTable } from "./types";
 import {
-	DecodeError, ReadableStream, EncodeError, WritableStream,
+	DecodeError, Readable, EncodeError, StreamableLookupTable, Writable,
 	readBool, readUInt8, readUInt16, readUInt32, readBuffer,
 	readSpaceOptimizedUInt16, readSpaceOptimizedUInt32, readString, readUtf8String,
 	writeBool, writeUInt8, writeUInt16, writeUInt32, writeBuffer,
@@ -514,7 +513,7 @@ const notImplementedDuplex = {
 	write: () => { throw new Error("Not implemented"); },
 };
 
-const inputActionDuplex: DuplexTable<InputActionType, InputActionValueType> = {
+const inputActionDuplex: StreamableLookupTable<InputActionType, InputActionValueType> = {
 	[InputActionType.Nothing]: emptyDuplex,
 	[InputActionType.StopWalking]: emptyDuplex,
 	[InputActionType.BeginMining]: emptyDuplex,
@@ -765,13 +764,13 @@ const inputActionDuplex: DuplexTable<InputActionType, InputActionValueType> = {
 };
 
 export type CrcData = { crc: number, tickOfCrc: number };
-export function readCrcData(stream: ReadableStream) {
+export function readCrcData(stream: Readable) {
 	return {
 		crc: readUInt32(stream),
 		tickOfCrc: readUInt32(stream),
 	};
 }
-export function writeCrcData(stream: WritableStream, data: CrcData) {
+export function writeCrcData(stream: Writable, data: CrcData) {
 	writeUInt32(stream, data.crc);
 	writeUInt32(stream, data.tickOfCrc);
 }
@@ -782,13 +781,13 @@ export enum ShootingStateState {
 	ShootingSelected,
 }
 export type ShootingState = { state: ShootingStateState, target: MapPosition };
-export function readShootingState(stream: ReadableStream) {
+export function readShootingState(stream: Readable) {
 	return {
 		state: readUInt8(stream),
 		target: MapPosition.read(stream),
 	};
 }
-export function writeShootingState(stream: WritableStream, state: ShootingState) {
+export function writeShootingState(stream: Writable, state: ShootingState) {
 	writeUInt8(stream, state.state);
 	MapPosition.write(stream, state.target);
 }
@@ -801,7 +800,7 @@ export type PlayerJoinGameData = {
 	asEditor: boolean,
 	admin: boolean,
 }
-export function readPlayerJoinGameData(stream: ReadableStream) {
+export function readPlayerJoinGameData(stream: Readable) {
 	return {
 		peerID: readSpaceOptimizedUInt16(stream),
 		playerIndex: readUInt16(stream),
@@ -811,7 +810,7 @@ export function readPlayerJoinGameData(stream: ReadableStream) {
 		admin: readBool(stream),
 	};
 }
-export function writePlayerJoinGameData(stream: WritableStream, data: PlayerJoinGameData) {
+export function writePlayerJoinGameData(stream: Writable, data: PlayerJoinGameData) {
 	writeSpaceOptimizedUInt16(stream, data.peerID);
 	writeUInt16(stream, data.playerIndex);
 	writeUInt8(stream, data.forceID);
@@ -825,14 +824,14 @@ export type ServerCommandData = {
 	id: number,
 	connectionID: Buffer,
 }
-export function readServerCommandData(stream: ReadableStream) {
+export function readServerCommandData(stream: Readable) {
 	return {
 		command: readString(stream),
 		id: readUInt32(stream),
 		connectionID: readBuffer(stream, 8),
 	};
 }
-export function writeServerCommandData(stream: WritableStream, data: ServerCommandData) {
+export function writeServerCommandData(stream: Writable, data: ServerCommandData) {
 	writeString(stream, data.command);
 	writeUInt32(stream, data.id);
 	writeBuffer(stream, data.connectionID);
@@ -848,12 +847,12 @@ export class InputAction<T extends InputActionType = InputActionType> {
 		public playerIndex?: number,
 	) { }
 
-	static read(stream: ReadableStream, lastPlayerIndex: number = 0) {
+	static read(stream: Readable, lastPlayerIndex: number = 0) {
 		const type = readUInt8(stream);
 		return this.readPayload(stream, type, lastPlayerIndex);
 	}
 
-	static readPayload(stream: ReadableStream, type: InputActionType, lastPlayerIndex: number = 0) {
+	static readPayload(stream: Readable, type: InputActionType, lastPlayerIndex: number = 0) {
 		const playerIndex = (readSpaceOptimizedUInt16(stream) + lastPlayerIndex) & 0xffff;
 
 		const duplex = inputActionDuplex[type];
@@ -871,13 +870,13 @@ export class InputAction<T extends InputActionType = InputActionType> {
 		);
 	}
 
-	static write(stream: WritableStream, input: InputAction, lastPlayerIndex: number) {
+	static write(stream: Writable, input: InputAction, lastPlayerIndex: number) {
 		writeUInt8(stream, input.type);
 		this.writePayload(stream, input, lastPlayerIndex);
 	}
 
 	static writePayload<T extends InputActionType>(
-		stream: WritableStream, input: InputAction<T>, lastPlayerIndex: number
+		stream: Writable, input: InputAction<T>, lastPlayerIndex: number
 	) {
 		writeSpaceOptimizedUInt16(stream, input.playerIndex! - lastPlayerIndex & 0xffff);
 		const duplex = inputActionDuplex[input.type];
@@ -903,7 +902,7 @@ export class InputActionSegment {
 		public payload: Buffer,
 	) { }
 
-	static read(stream: ReadableStream) {
+	static read(stream: Readable) {
 		return new InputActionSegment(
 			readUInt8(stream),
 			readUInt32(stream),
@@ -914,7 +913,7 @@ export class InputActionSegment {
 		);
 	}
 
-	static write(stream: WritableStream, segment: InputActionSegment) {
+	static write(stream: Writable, segment: InputActionSegment) {
 		writeUInt8(stream, segment.type);
 		writeUInt32(stream, segment.id);
 		writeSpaceOptimizedUInt16(stream, segment.playerIndex);
