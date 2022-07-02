@@ -157,7 +157,7 @@ class UdpClient extends events.EventEmitter {
 			return;
 		}
 		if (messageStream.readable) {
-			const extraData = messageStream.readBuffer();
+			const extraData = messageStream.read();
 			this.emit("error", new DecodeError(
 				`Undecoded data after message: ${util.format(extraData)}`,
 				{ messageStream: messageStream, message, messageData, extraData },

@@ -14,69 +14,8 @@ export class ReadableStream {
 		public pos: number = 0,
 	) {}
 
-	readBool() {
-		if (this.pos + 1 > this.buf.length) {
-			throw new DecodeError("End of stream reached reading bool", { stream: this });
-		}
-		const value = this.buf.readUInt8(this.pos);
-		if (value > 1) {
-			throw new DecodeError(`Invalid boolean data read: ${value}`, { stream: this });
-		}
-		this.pos += 1;
-		return Boolean(value);
-	}
-
-	readUInt8() {
-		if (this.pos + 1 > this.buf.length) {
-			throw new DecodeError("End of stream reached reading UInt8", { stream: this });
-		}
-		const value = this.buf.readUInt8(this.pos);
-		this.pos += 1;
-		return value;
-	}
-
-	readUInt16() {
-		if (this.pos + 2 > this.buf.length) {
-			throw new DecodeError("End of stream reached reading UInt16", { stream: this });
-		}
-		const value = this.buf.readUInt16LE(this.pos);
-		this.pos += 2;
-		return value;
-	}
-
-	readUInt32() {
-		if (this.pos + 4 > this.buf.length) {
-			throw new DecodeError("End of stream reached reading UInt32", { stream: this });
-		}
-		const value = this.buf.readUInt32LE(this.pos);
-		this.pos += 4;
-		return value;
-	}
-
-	readInt32() {
-		if (this.pos + 4 > this.buf.length) {
-			throw new DecodeError("End of stream reached reading Int32", { stream: this });
-		}
-		const value = this.buf.readInt32LE(this.pos);
-		this.pos += 4;
-		return value;
-	}
-
-	readDouble() {
-		if (this.pos + 8 > this.buf.length) {
-			throw new DecodeError("End of stream reached reading Double", { stream: this });
-		}
-		const value = this.buf.readDoubleLE(this.pos);
-		this.pos += 8;
-		return value;
-	}
-
-	readBuffer(size?: number) {
-		const end = size === undefined ? undefined : this.pos + size;
-		if (end !== undefined && end > this.buf.length) {
-			throw new DecodeError(`End of stream reached reading Buffer[${size}]`, { stream: this });
-		}
-		const buf = this.buf.slice(this.pos, end);
+	read(size?: number) {
+		const buf = this.buf.slice(this.pos, size === undefined ? undefined : this.pos + size);
 		this.pos += buf.length;
 		return buf;
 	}
@@ -88,13 +27,59 @@ export class ReadableStream {
 
 export type Reader<T> = (stream: ReadableStream) => T;
 
-export function readBool(stream: ReadableStream) { return stream.readBool(); }
-export function readUInt8(stream: ReadableStream) { return stream.readUInt8(); }
-export function readUInt16(stream: ReadableStream) { return stream.readUInt16(); }
-export function readUInt32(stream: ReadableStream) { return stream.readUInt32();}
-export function readInt32(stream: ReadableStream) { return stream.readInt32();}
-export function readDouble(stream: ReadableStream) { return stream.readDouble();}
-export function readBuffer(stream: ReadableStream, size?: number) { return stream.readBuffer(size); }
+export function readBool(stream: ReadableStream) {
+	const buf = stream.read(1);
+	if (buf.length < 1) {
+		throw new DecodeError("End of stream reached reading bool", { stream });
+	}
+	const value = buf.readUInt8();
+	if (value > 1) {
+		throw new DecodeError(`Invalid boolean data read: ${value}`, { stream });
+	}
+	return Boolean(value);
+}
+export function readUInt8(stream: ReadableStream) {
+	const buf = stream.read(1);
+	if (buf.length < 1) {
+		throw new DecodeError("End of stream reached reading UInt8", { stream });
+	}
+	return buf.readUInt8();
+}
+export function readUInt16(stream: ReadableStream) {
+	const buf = stream.read(2);
+	if (buf.length < 2) {
+		throw new DecodeError("End of stream reached reading UInt16", { stream });
+	}
+	return buf.readUInt16LE();
+}
+export function readUInt32(stream: ReadableStream) {
+	const buf = stream.read(4);
+	if (buf.length < 4) {
+		throw new DecodeError("End of stream reached reading UInt32", { stream });
+	}
+	return buf.readUInt32LE();
+}
+export function readInt32(stream: ReadableStream) {
+	const buf = stream.read(4);
+	if (buf.length < 4) {
+		throw new DecodeError("End of stream reached reading Int32", { stream });
+	}
+	return buf.readInt32LE();
+}
+export function readDouble(stream: ReadableStream) {
+	const buf = stream.read(8);
+	if (buf.length < 8) {
+		throw new DecodeError("End of stream reached reading Double", { stream });
+	}
+	return buf.readDoubleLE();
+}
+export function readBuffer(stream: ReadableStream, size?: number) {
+	const buf = stream.read(size);
+	if (size !== undefined && buf.length < size) {
+		throw new DecodeError(`End of stream reached reading Buffer[${size}]`, { stream });
+	}
+	return buf;
+}
 
 export function readSpaceOptimizedUInt16(stream: ReadableStream) {
 	let value = readUInt8(stream);
@@ -163,44 +148,7 @@ export class EncodeError extends Error {
 export class WritableStream {
 	private bufs: Buffer[] = [];
 
-	writeBool(value: boolean) {
-		const buf = Buffer.alloc(1);
-		buf.writeUInt8(Number(value));
-		this.bufs.push(buf);
-	}
-
-	writeUInt8(value: number) {
-		const buf = Buffer.alloc(1);
-		buf.writeUInt8(value);
-		this.bufs.push(buf);
-	}
-
-	writeUInt16(value: number) {
-		const buf = Buffer.alloc(2);
-		buf.writeUInt16LE(value);
-		this.bufs.push(buf);
-	}
-
-	writeUInt32(value: number) {
-		const buf = Buffer.alloc(4);
-		buf.writeUInt32LE(value);
-		this.bufs.push(buf);
-	}
-
-	writeInt32(value: number) {
-		const buf = Buffer.alloc(4);
-		buf.writeInt32LE(value);
-		this.bufs.push(buf);
-	}
-
-	writeDouble(value: number) {
-		const buf = Buffer.alloc(8);
-		buf.writeDoubleLE(value);
-		this.bufs.push(buf);
-	}
-
-
-	writeBuffer(buf: Buffer) {
+	write(buf: Buffer) {
 		this.bufs.push(buf);
 	}
 
@@ -211,13 +159,39 @@ export class WritableStream {
 
 export type Writer<T> = (stream: WritableStream, value: T) => void;
 
-export function writeBool(stream: WritableStream, value: boolean) { return stream.writeBool(value); }
-export function writeUInt8(stream: WritableStream, value: number) { return stream.writeUInt8(value); }
-export function writeUInt16(stream: WritableStream, value: number) { return stream.writeUInt16(value); }
-export function writeUInt32(stream: WritableStream, value: number) { return stream.writeUInt32(value);}
-export function writeInt32(stream: WritableStream, value: number) { return stream.writeInt32(value);}
-export function writeDouble(stream: WritableStream, value: number) { return stream.writeDouble(value); }
-export function writeBuffer(stream: WritableStream, buf: Buffer) { return stream.writeBuffer(buf); }
+export function writeBool(stream: WritableStream, value: boolean) {
+	const buf = Buffer.alloc(1);
+	buf.writeUInt8(Number(value));
+	stream.write(buf);
+}
+export function writeUInt8(stream: WritableStream, value: number) {
+	const buf = Buffer.alloc(1);
+	buf.writeUInt8(value);
+	stream.write(buf);
+}
+export function writeUInt16(stream: WritableStream, value: number) {
+	const buf = Buffer.alloc(2);
+	buf.writeUInt16LE(value);
+	stream.write(buf);
+}
+export function writeUInt32(stream: WritableStream, value: number) {
+	const buf = Buffer.alloc(4);
+	buf.writeUInt32LE(value);
+	stream.write(buf);
+}
+export function writeInt32(stream: WritableStream, value: number) {
+	const buf = Buffer.alloc(4);
+	buf.writeInt32LE(value);
+	stream.write(buf);
+}
+export function writeDouble(stream: WritableStream, value: number) {
+	const buf = Buffer.alloc(8);
+	buf.writeDoubleLE(value);
+	stream.write(buf);
+}
+export function writeBuffer(stream: WritableStream, buf: Buffer) {
+	stream.write(buf);
+}
 
 export function writeSpaceOptimizedUInt16(stream: WritableStream, value: number) {
 	if (value > 0xff) {
