@@ -1,9 +1,9 @@
 import { PropertyTree, PropertyTreeType } from "../src/data";
-import { ReadableStream, Streamable, WritableStream } from "../src/stream";
+import { ReadableStream, Duplexer, WritableStream } from "../src/stream";
 
 function checkRoundtrip<T>(
 	input: T,
-	type: Streamable<T>,
+	type: Duplexer<T>,
 ) {
 	const writeStream = new WritableStream();
 	type.write(writeStream, input);

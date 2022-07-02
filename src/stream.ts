@@ -254,11 +254,11 @@ export function writeMap<K, V>(
 	}
 }
 
-export interface Streamable<T> {
+export interface Duplexer<T> {
 	read(stream: Readable): T,
 	write(stream: Writable, value: T): void,
 }
 
-export type StreamableLookupTable<Enum extends number, ValueType extends Record<Enum, any>> = {
-	[T in Enum]: Streamable<ValueType[T]>;
+export type DuplexerLookupTable<Enum extends number, ValueType extends Record<Enum, any>> = {
+	[T in Enum]: Duplexer<ValueType[T]>;
 };

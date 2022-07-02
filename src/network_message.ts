@@ -1,5 +1,5 @@
 import {
-	Readable, Writable, Streamable,
+	Readable, Writable, Duplexer,
 	readUInt8, readUInt16, readUInt32, readSpaceOptimizedUInt16, readSpaceOptimizedUInt32,
 	readBuffer, readUtf8String, readArray, readMap,
 	writeUInt8, writeUInt16, writeUInt32, writeSpaceOptimizedUInt16, writeSpaceOptimizedUInt32,
@@ -557,7 +557,7 @@ export type NetworkMessage =
 	Empty
 ;
 
-export const NetworkMessageTypeToClass = new Map<NetworkMessageType, Streamable<NetworkMessage>>([
+export const NetworkMessageTypeToClass = new Map<NetworkMessageType, Duplexer<NetworkMessage>>([
 	// [NetworkMessageType.Ping, ...],
 	// [NetworkMessageType.PingReply, ...],
 	[NetworkMessageType.ConnectionRequest, ConnectionRequest],

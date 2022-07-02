@@ -1,5 +1,5 @@
 import {
-	DecodeError, Readable, EncodeError, StreamableLookupTable, Writable,
+	DecodeError, Readable, EncodeError, DuplexerLookupTable, Writable,
 	readBool, readUInt8, readUInt16, readUInt32, readBuffer,
 	readSpaceOptimizedUInt16, readSpaceOptimizedUInt32, readString, readUtf8String,
 	writeBool, writeUInt8, writeUInt16, writeUInt32, writeBuffer,
@@ -513,7 +513,7 @@ const notImplementedDuplex = {
 	write: () => { throw new Error("Not implemented"); },
 };
 
-const inputActionDuplex: StreamableLookupTable<InputActionType, InputActionValueType> = {
+const inputActionDuplex: DuplexerLookupTable<InputActionType, InputActionValueType> = {
 	[InputActionType.Nothing]: emptyDuplex,
 	[InputActionType.StopWalking]: emptyDuplex,
 	[InputActionType.BeginMining]: emptyDuplex,

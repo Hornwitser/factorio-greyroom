@@ -1,5 +1,5 @@
 import {
-	Readable, StreamableLookupTable, Writable,
+	Readable, DuplexerLookupTable, Writable,
 	readBool, readUInt8, readUInt16, readInt32, readUInt32, readDouble, readSpaceOptimizedUInt16, readUtf8String,
 	writeBool, writeUInt8, writeUInt16, writeInt32, writeUInt32, writeDouble, writeSpaceOptimizedUInt16, writeUtf8String,
 } from "./stream";
@@ -107,7 +107,7 @@ type PropertyTreeValueType = {
 	[PropertyTreeType.Dictionary]: PropertyTree<PropertyTreeType>[],
 }
 
-const propertyTreeDuplex: StreamableLookupTable<PropertyTreeType, PropertyTreeValueType> = {
+const propertyTreeDuplex: DuplexerLookupTable<PropertyTreeType, PropertyTreeValueType> = {
 	[PropertyTreeType.None]: { read: () => undefined, write: () => {} },
 	[PropertyTreeType.Bool]: { read: readBool, write: writeBool },
 	[PropertyTreeType.Number]: { read: readDouble, write: writeDouble },

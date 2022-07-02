@@ -1,5 +1,5 @@
 import {
-	DecodeError, Readable, EncodeError, Writable, Streamable,
+	DecodeError, Readable, EncodeError, Writable, Duplexer,
 	readBool, readUInt8, readUInt16, readUInt32, readUtf8String, readArray, readMap,
 	writeBool, writeUInt8, writeUInt16, writeUInt32, writeUtf8String, writeArray, writeMap,
 } from "./stream";
@@ -652,7 +652,7 @@ export type SynchronizerAction =
 	SavingCountDown
 ;
 
-export const SynchronizerActionTypeToClass = new Map<SynchronizerActionType, Streamable<SynchronizerAction>>([
+export const SynchronizerActionTypeToClass = new Map<SynchronizerActionType, Duplexer<SynchronizerAction>>([
 	[SynchronizerActionType.GameEnd, GameEnd],
 	[SynchronizerActionType.PeerDisconnect, PeerDisconnect],
 	[SynchronizerActionType.NewPeerInfo, NewPeerInfo],
