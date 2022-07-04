@@ -1,9 +1,8 @@
 import {
 	DecodeError, Readable, EncodeError, Writable, Duplexer,
-	readBool, readUInt8, readUInt16, readUInt32, readUtf8String, readArray, readMap,
-	writeBool, writeUInt8, writeUInt16, writeUInt32, writeUtf8String, writeArray, writeMap,
+	Bool, UInt8, UInt16, UInt32, Utf8String, ArrayT, MapT,
 } from "./stream";
-import { DisconnectReason, readSmallProgress, writeSmallProgress, SmallProgress } from "./data";
+import { DisconnectReason, SmallProgress } from "./data";
 
 
 export enum SynchronizerActionType {
@@ -32,14 +31,14 @@ export enum SynchronizerActionType {
 
 export abstract class AbstractSynchronizerAction {
 	abstract type: SynchronizerActionType;
-	abstract peerID?: number;
+	abstract peerID?: UInt16;
 }
 
 
 export class GameEnd implements AbstractSynchronizerAction {
 	readonly type = SynchronizerActionType.GameEnd;
 	constructor(
-		public peerID?: number,
+		public peerID?: UInt16,
 	) { }
 
 	static read() {
@@ -54,17 +53,17 @@ export class PeerDisconnect implements AbstractSynchronizerAction {
 	readonly type = SynchronizerActionType.PeerDisconnect;
 	constructor(
 		public reason: DisconnectReason,
-		public peerID?: number,
+		public peerID?: UInt16,
 	) { }
 
 	static read(stream: Readable) {
 		return new PeerDisconnect(
-			readUInt8(stream),
+			UInt8.read(stream),
 		);
 	}
 
 	static write(stream: Writable, action: PeerDisconnect) {
-		writeUInt8(stream, action.reason);
+		UInt8.write(stream, action.reason);
 	}
 }
 
@@ -73,17 +72,17 @@ export class NewPeerInfo implements AbstractSynchronizerAction {
 	readonly type = SynchronizerActionType.NewPeerInfo;
 	constructor(
 		public username: string,
-		public peerID?: number,
+		public peerID?: UInt16,
 	) { }
 
 	static read(stream: Readable) {
 		return new NewPeerInfo(
-			readUtf8String(stream),
+			Utf8String.read(stream),
 		);
 	}
 
 	static write(stream: Writable, action: NewPeerInfo) {
-		writeUtf8String(stream, action.username);
+		Utf8String.write(stream, action.username);
 	}
 }
 
@@ -116,17 +115,17 @@ export class ClientChangedState implements AbstractSynchronizerAction {
 	readonly type = SynchronizerActionType.ClientChangedState;
 	constructor(
 		public newState: ClientMultiplayerStateType,
-		public peerID?: number,
+		public peerID?: UInt16,
 	) { }
 
 	static read(stream: Readable) {
 		return new ClientChangedState(
-			readUInt8(stream),
+			UInt8.read(stream),
 		);
 	}
 
 	static write(stream: Writable, action: ClientChangedState) {
-		writeUInt8(stream, action.newState);
+		UInt8.write(stream, action.newState);
 	}
 }
 
@@ -134,18 +133,18 @@ export class ClientChangedState implements AbstractSynchronizerAction {
 export class ClientShouldStartSendingTickClosures implements AbstractSynchronizerAction {
 	readonly type = SynchronizerActionType.ClientShouldStartSendingTickClosures;
 	constructor(
-		public firstExpectedTickClosureTick: number,
-		public peerID?: number,
+		public firstExpectedTickClosureTick: UInt32,
+		public peerID?: UInt16,
 	) { }
 
 	static read(stream: Readable) {
 		return new ClientShouldStartSendingTickClosures(
-			readUInt32(stream),
+			UInt32.read(stream),
 		);
 	}
 
 	static write(stream: Writable, action: ClientShouldStartSendingTickClosures) {
-		writeUInt32(stream, action.firstExpectedTickClosureTick);
+		UInt32.write(stream, action.firstExpectedTickClosureTick);
 	}
 }
 
@@ -329,8 +328,8 @@ export enum GameActionType {
 export class ScriptRegistration {
 	constructor(
 		public standardEvents: GameActionType[],
-		public nthTickEvents: number[],
-		public standardEventFilters: [number, number][],
+		public nthTickEvents: UInt32[],
+		public standardEventFilters: [UInt32, UInt32][],
 		public onInit: boolean,
 		public onLoad: boolean,
 		public onConfigurationChanged: boolean,
@@ -338,79 +337,79 @@ export class ScriptRegistration {
 
 	static read(stream: Readable) {
 		return new ScriptRegistration(
-			readArray(stream, readUInt32),
-			readArray(stream, readUInt32),
-			readArray(stream, stream => [readUInt32(stream), readUInt32(stream)]),
-			readBool(stream),
-			readBool(stream),
-			readBool(stream),
+			ArrayT.read(stream, UInt32.read),
+			ArrayT.read(stream, UInt32.read),
+			ArrayT.read(stream, stream => [UInt32.read(stream), UInt32.read(stream)]),
+			Bool.read(stream),
+			Bool.read(stream),
+			Bool.read(stream),
 		);
 	}
 
 	static write(stream: Writable, reg: ScriptRegistration) {
-		writeArray(stream, reg.standardEvents, writeUInt32);
-		writeArray(stream, reg.nthTickEvents, writeUInt32);
-		writeArray(stream, reg.standardEventFilters, (stream, item) => {
-			writeUInt32(stream, item[0]);
-			writeUInt32(stream, item[1]);
+		ArrayT.write(stream, reg.standardEvents, UInt32.write);
+		ArrayT.write(stream, reg.nthTickEvents, UInt32.write);
+		ArrayT.write(stream, reg.standardEventFilters, (stream, item) => {
+			UInt32.write(stream, item[0]);
+			UInt32.write(stream, item[1]);
 		});
-		writeBool(stream, reg.onInit);
-		writeBool(stream, reg.onLoad);
-		writeBool(stream, reg.onConfigurationChanged);
+		Bool.write(stream, reg.onInit);
+		Bool.write(stream, reg.onLoad);
+		Bool.write(stream, reg.onConfigurationChanged);
 	}
 }
 
 export class MapReadyForDownload implements AbstractSynchronizerAction {
 	readonly type = SynchronizerActionType.MapReadyForDownload;
 	constructor(
-		public size: number,
-		public auxiliarySize: number,
-		public crc: number,
-		public updateTick: number,
-		public autosaveInterval: number,
-		public autosaveSlots: number,
-		public autosaveOnlyOnServer: boolean,
-		public nonBlockingSaving: boolean,
-		public scriptChecksums: Map<string, number>,
-		public scriptEvents: Map<string, ScriptRegistration>,
-		public scriptCommands: Map<string, string[]>,
-		public peerID?: number,
+		public size: UInt32,
+		public auxiliarySize: UInt32,
+		public crc: UInt32,
+		public updateTick: UInt32,
+		public autosaveInterval: UInt32,
+		public autosaveSlots: UInt32,
+		public autosaveOnlyOnServer: Bool,
+		public nonBlockingSaving: Bool,
+		public scriptChecksums: Map<Utf8String, UInt32>,
+		public scriptEvents: Map<Utf8String, ScriptRegistration>,
+		public scriptCommands: Map<Utf8String, Utf8String[]>,
+		public peerID?: UInt16,
 	) { }
 
 	static read(stream: Readable) {
 		return new MapReadyForDownload(
-			readUInt32(stream),
-			readUInt32(stream),
-			readUInt32(stream),
-			readUInt32(stream),
-			readUInt32(stream),
-			readUInt32(stream),
-			readBool(stream),
-			readBool(stream),
-			readMap(stream, readUtf8String, readUInt32),
-			readMap(stream, readUtf8String, ScriptRegistration.read),
-			readMap(stream, readUtf8String,
-				stream => readArray(stream, readUtf8String),
+			UInt32.read(stream),
+			UInt32.read(stream),
+			UInt32.read(stream),
+			UInt32.read(stream),
+			UInt32.read(stream),
+			UInt32.read(stream),
+			Bool.read(stream),
+			Bool.read(stream),
+			MapT.read(stream, Utf8String.read, UInt32.read),
+			MapT.read(stream, Utf8String.read, ScriptRegistration.read),
+			MapT.read(stream, Utf8String.read,
+				stream => ArrayT.read(stream, Utf8String.read),
 			),
 		);
 	}
 
 	static write(stream: Writable, action: MapReadyForDownload) {
-		writeUInt32(stream, action.size);
-		writeUInt32(stream, action.auxiliarySize);
-		writeUInt32(stream, action.crc);
-		writeUInt32(stream, action.updateTick);
-		writeUInt32(stream, action.autosaveInterval);
-		writeUInt32(stream, action.autosaveSlots);
-		writeBool(stream, action.autosaveOnlyOnServer);
-		writeBool(stream, action.nonBlockingSaving);
-		writeMap(stream, action.scriptChecksums, writeUtf8String, writeUInt32),
-		writeMap(stream, action.scriptEvents, writeUtf8String, ScriptRegistration.write),
-		writeMap(stream,
+		UInt32.write(stream, action.size);
+		UInt32.write(stream, action.auxiliarySize);
+		UInt32.write(stream, action.crc);
+		UInt32.write(stream, action.updateTick);
+		UInt32.write(stream, action.autosaveInterval);
+		UInt32.write(stream, action.autosaveSlots);
+		Bool.write(stream, action.autosaveOnlyOnServer);
+		Bool.write(stream, action.nonBlockingSaving);
+		MapT.write(stream, action.scriptChecksums, Utf8String.write, UInt32.write),
+		MapT.write(stream, action.scriptEvents, Utf8String.write, ScriptRegistration.write),
+		MapT.write(stream,
 			action.scriptCommands,
-			writeUtf8String,
+			Utf8String.write,
 			(stream, value) => {
-				writeArray(stream, value, writeUtf8String);
+				ArrayT.write(stream, value, Utf8String.write);
 			},
 		);
 	}
@@ -421,17 +420,17 @@ export class MapLoadingProgressUpdate implements AbstractSynchronizerAction {
 	readonly type = SynchronizerActionType.MapLoadingProgressUpdate;
 	constructor(
 		public progress: SmallProgress,
-		public peerID?: number,
+		public peerID?: UInt16,
 	) { }
 
 	static read(stream: Readable) {
 		return new MapLoadingProgressUpdate(
-			readSmallProgress(stream),
+			SmallProgress.read(stream),
 		);
 	}
 
 	static write(stream: Writable, action: MapLoadingProgressUpdate) {
-		writeSmallProgress(stream, action.progress);
+		SmallProgress.write(stream, action.progress);
 	}
 }
 
@@ -440,17 +439,17 @@ export class MapSavingProgressUpdate implements AbstractSynchronizerAction {
 	readonly type = SynchronizerActionType.MapSavingProgressUpdate;
 	constructor(
 		public progress: SmallProgress,
-		public peerID?: number,
+		public peerID?: UInt16,
 	) { }
 
 	static read(stream: Readable) {
 		return new MapSavingProgressUpdate(
-			readSmallProgress(stream),
+			SmallProgress.read(stream),
 		);
 	}
 
 	static write(stream: Writable, action: MapSavingProgressUpdate) {
-		writeSmallProgress(stream, action.progress);
+		SmallProgress.write(stream, action.progress);
 	}
 }
 
@@ -458,7 +457,7 @@ export class MapSavingProgressUpdate implements AbstractSynchronizerAction {
 export class SavingForUpdate implements AbstractSynchronizerAction {
 	readonly type = SynchronizerActionType.SavingForUpdate;
 	constructor(
-		public peerID?: number,
+		public peerID?: UInt16,
 	) { }
 
 	static read() {
@@ -473,17 +472,17 @@ export class MapDownloadingProgressUpdate implements AbstractSynchronizerAction 
 	readonly type = SynchronizerActionType.MapDownloadingProgressUpdate;
 	constructor(
 		public progress: SmallProgress,
-		public peerID?: number,
+		public peerID?: UInt16,
 	) { }
 
 	static read(stream: Readable) {
 		return new MapDownloadingProgressUpdate(
-			readSmallProgress(stream),
+			SmallProgress.read(stream),
 		);
 	}
 
 	static write(stream: Writable, action: MapDownloadingProgressUpdate) {
-		writeSmallProgress(stream, action.progress);
+		SmallProgress.write(stream, action.progress);
 	}
 }
 
@@ -492,17 +491,17 @@ export class CatchingUpProgressUpdate implements AbstractSynchronizerAction {
 	readonly type = SynchronizerActionType.CatchingUpProgressUpdate;
 	constructor(
 		public progress: SmallProgress,
-		public peerID?: number,
+		public peerID?: UInt16,
 	) { }
 
 	static read(stream: Readable) {
 		return new CatchingUpProgressUpdate(
-			readSmallProgress(stream),
+			SmallProgress.read(stream),
 		);
 	}
 
 	static write(stream: Writable, action: CatchingUpProgressUpdate) {
-		writeSmallProgress(stream, action.progress);
+		SmallProgress.write(stream, action.progress);
 	}
 }
 
@@ -511,17 +510,17 @@ export class PeerDroppingProgressUpdate implements AbstractSynchronizerAction {
 	readonly type = SynchronizerActionType.PeerDroppingProgressUpdate;
 	constructor(
 		public progress: SmallProgress,
-		public peerID?: number,
+		public peerID?: UInt16,
 	) { }
 
 	static read(stream: Readable) {
 		return new PeerDroppingProgressUpdate(
-			readSmallProgress(stream),
+			SmallProgress.read(stream),
 		);
 	}
 
 	static write(stream: Writable, action: PeerDroppingProgressUpdate) {
-		writeSmallProgress(stream, action.progress);
+		SmallProgress.write(stream, action.progress);
 	}
 }
 
@@ -529,7 +528,7 @@ export class PeerDroppingProgressUpdate implements AbstractSynchronizerAction {
 export class PlayerDesynced implements AbstractSynchronizerAction {
 	readonly type = SynchronizerActionType.PlayerDesynced;
 	constructor(
-		public peerID?: number,
+		public peerID?: UInt16,
 	) { }
 
 	static read() {
@@ -543,7 +542,7 @@ export class PlayerDesynced implements AbstractSynchronizerAction {
 export class BeginPause implements AbstractSynchronizerAction {
 	readonly type = SynchronizerActionType.BeginPause;
 	constructor(
-		public peerID?: number,
+		public peerID?: UInt16,
 	) { }
 
 	static read() {
@@ -557,7 +556,7 @@ export class BeginPause implements AbstractSynchronizerAction {
 export class EndPause implements AbstractSynchronizerAction {
 	readonly type = SynchronizerActionType.EndPause;
 	constructor(
-		public peerID?: number,
+		public peerID?: UInt16,
 	) { }
 
 	static read() {
@@ -571,18 +570,18 @@ export class EndPause implements AbstractSynchronizerAction {
 export class ChangeLatency implements AbstractSynchronizerAction {
 	readonly type = SynchronizerActionType.ChangeLatency;
 	constructor(
-		public latency: number,
-		public peerID?: number,
+		public latency: UInt8,
+		public peerID?: UInt16,
 	) { }
 
 	static read(stream: Readable) {
 		return new ChangeLatency(
-			readUInt8(stream),
+			UInt8.read(stream),
 		);
 	}
 
 	static write(stream: Writable, action: ChangeLatency) {
-		writeUInt8(stream, action.latency);
+		UInt8.write(stream, action.latency);
 	}
 }
 
@@ -590,21 +589,21 @@ export class ChangeLatency implements AbstractSynchronizerAction {
 export class IncreasedLatencyConfirm implements AbstractSynchronizerAction {
 	readonly type = SynchronizerActionType.IncreasedLatencyConfirm;
 	constructor(
-		public firstTickToSkip: number,
-		public ticksToSkip: number,
-		public peerID?: number,
+		public firstTickToSkip: UInt32,
+		public ticksToSkip: UInt8,
+		public peerID?: UInt16,
 	) { }
 
 	static read(stream: Readable) {
 		return new IncreasedLatencyConfirm(
-			readUInt32(stream),
-			readUInt8(stream),
+			UInt32.read(stream),
+			UInt8.read(stream),
 		);
 	}
 
 	static write(stream: Writable, action: IncreasedLatencyConfirm) {
-		writeUInt32(stream, action.firstTickToSkip);
-		writeUInt8(stream, action.ticksToSkip);
+		UInt32.write(stream, action.firstTickToSkip);
+		UInt8.write(stream, action.ticksToSkip);
 	}
 }
 
@@ -612,21 +611,21 @@ export class IncreasedLatencyConfirm implements AbstractSynchronizerAction {
 export class SavingCountDown implements AbstractSynchronizerAction {
 	readonly type = SynchronizerActionType.SavingCountDown;
 	constructor(
-		public ticksToFinish: number,
-		public playersInQueue: number,
-		public peerID?: number,
+		public ticksToFinish: UInt32,
+		public playersInQueue: UInt32,
+		public peerID?: UInt16,
 	) { }
 
 	static read(stream: Readable) {
 		return new SavingCountDown(
-			readUInt32(stream),
-			readUInt32(stream),
+			UInt32.read(stream),
+			UInt32.read(stream),
 		);
 	}
 
 	static write(stream: Writable, action: SavingCountDown) {
-		writeUInt32(stream, action.ticksToFinish);
-		writeUInt32(stream, action.playersInQueue);
+		UInt32.write(stream, action.ticksToFinish);
+		UInt32.write(stream, action.playersInQueue);
 	}
 }
 
@@ -676,7 +675,7 @@ export const SynchronizerActionTypeToClass = new Map<SynchronizerActionType, Dup
 ]);
 
 export function readSynchronizerAction(stream: Readable, isServer: boolean): SynchronizerAction {
-	const type: SynchronizerActionType = readUInt8(stream);
+	const type: SynchronizerActionType = UInt8.read(stream);
 	const synchronizerClass = SynchronizerActionTypeToClass.get(type);
 	if (!synchronizerClass) {
 		throw new DecodeError(
@@ -686,7 +685,7 @@ export function readSynchronizerAction(stream: Readable, isServer: boolean): Syn
 	}
 	const action = synchronizerClass.read(stream);
 	if (isServer) {
-		action.peerID = readUInt16(stream);
+		action.peerID = UInt16.read(stream);
 	}
 	return action;
 }
@@ -704,9 +703,9 @@ export function writeSynchronizerAction(
 			{ stream, synchronizerActionType: type }
 		);
 	}
-	writeUInt8(stream, type);
+	UInt8.write(stream, type);
 	synchronizerClass.write(stream, synchronizerAction);
 	if (isServer) {
-		writeUInt16(stream, synchronizerAction.peerID!);
+		UInt16.write(stream, synchronizerAction.peerID!);
 	}
 }

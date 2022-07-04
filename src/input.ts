@@ -1,11 +1,93 @@
 import {
-	DecodeError, Readable, EncodeError, DuplexerLookupTable, Writable,
-	readBool, readUInt8, readUInt16, readUInt32, readBuffer,
-	readSpaceOptimizedUInt16, readSpaceOptimizedUInt32, readString, readUtf8String,
-	writeBool, writeUInt8, writeUInt16, writeUInt32, writeBuffer,
-	writeSpaceOptimizedUInt16, writeSpaceOptimizedUInt32, writeString, writeUtf8String,
+	DecodeError, Readable, EncodeError, Duplexer, DuplexerLookupTable, Writable,
+	Bool, UInt8, UInt16, UInt32, BufferT,
+	SpaceOptimizedUInt16, SpaceOptimizedUInt32, StringT, Utf8String,
 } from "./stream";
 import { Direction, MapPosition, DisconnectReason } from "./data";
+
+
+export type CrcData = { crc: number, tickOfCrc: number };
+export const CrcData: Duplexer<CrcData> = {
+	read(stream: Readable) {
+		return {
+			crc: UInt32.read(stream),
+			tickOfCrc: UInt32.read(stream),
+		};
+	},
+	write(stream: Writable, data: CrcData) {
+		UInt32.write(stream, data.crc);
+		UInt32.write(stream, data.tickOfCrc);
+	},
+};
+
+export enum ShootingStateState {
+	NotShooting,
+	ShootingEnemies,
+	ShootingSelected,
+}
+export type ShootingState = { state: ShootingStateState, target: MapPosition };
+export const ShootingState: Duplexer<ShootingState> = {
+	read(stream: Readable) {
+		return {
+			state: UInt8.read(stream),
+			target: MapPosition.read(stream),
+		};
+	},
+	write(stream: Writable, state: ShootingState) {
+		UInt8.write(stream, state.state);
+		MapPosition.write(stream, state.target);
+	},
+};
+
+export type PlayerJoinGameData = {
+	peerID: number,
+	playerIndex: number,
+	forceID: number,
+	username: string,
+	asEditor: boolean,
+	admin: boolean,
+}
+export const PlayerJoinGameData: Duplexer<PlayerJoinGameData> = {
+	read(stream: Readable) {
+		return {
+			peerID: SpaceOptimizedUInt16.read(stream),
+			playerIndex: UInt16.read(stream),
+			forceID: UInt8.read(stream),
+			username: Utf8String.read(stream),
+			asEditor: Bool.read(stream),
+			admin: Bool.read(stream),
+		};
+	},
+	write(stream: Writable, data: PlayerJoinGameData) {
+		SpaceOptimizedUInt16.write(stream, data.peerID);
+		UInt16.write(stream, data.playerIndex);
+		UInt8.write(stream, data.forceID);
+		Utf8String.write(stream, data.username);
+		Bool.write(stream, data.asEditor);
+		Bool.write(stream, data.admin);
+	},
+};
+
+export type ServerCommandData = {
+	command: Buffer,
+	id: number,
+	connectionID: Buffer,
+}
+export const ServerCommandData: Duplexer<ServerCommandData> = {
+	read(stream: Readable) {
+		return {
+			command: StringT.read(stream),
+			id: UInt32.read(stream),
+			connectionID: BufferT.read(stream, 8),
+		};
+	},
+	write(stream: Writable, data: ServerCommandData) {
+		StringT.write(stream, data.command);
+		UInt32.write(stream, data.id);
+		BufferT.write(stream, data.connectionID);
+	},
+};
+
 
 export enum InputActionType {
 	Nothing,
@@ -589,10 +671,10 @@ const inputActionDuplex: DuplexerLookupTable<InputActionType, InputActionValueTy
 	[InputActionType.CursorSplit]: notImplementedDuplex,
 	[InputActionType.StackTransfer]: notImplementedDuplex,
 	[InputActionType.InventoryTransfer]: notImplementedDuplex,
-	[InputActionType.CheckCRCHeuristic]: { read: readCrcData, write: writeCrcData },
+	[InputActionType.CheckCRCHeuristic]: CrcData,
 	[InputActionType.Craft]: notImplementedDuplex,
 	[InputActionType.WireDragging]: notImplementedDuplex,
-	[InputActionType.ChangeShootingState]: { read: readShootingState, write: writeShootingState },
+	[InputActionType.ChangeShootingState]: ShootingState,
 	[InputActionType.SetupAssemblingMachine]: notImplementedDuplex,
 	[InputActionType.SelectedEntityChanged]: notImplementedDuplex,
 	[InputActionType.SmartPipette]: notImplementedDuplex,
@@ -600,7 +682,7 @@ const inputActionDuplex: DuplexerLookupTable<InputActionType, InputActionValueTy
 	[InputActionType.InventorySplit]: notImplementedDuplex,
 	[InputActionType.CancelCraft]: notImplementedDuplex,
 	[InputActionType.SetFilter]: notImplementedDuplex,
-	[InputActionType.CheckCRC]: { read: readCrcData, write: writeCrcData },
+	[InputActionType.CheckCRC]: CrcData,
 	[InputActionType.SetCircuitCondition]: notImplementedDuplex,
 	[InputActionType.SetSignal]: notImplementedDuplex,
 	[InputActionType.StartResearch]: notImplementedDuplex,
@@ -657,7 +739,7 @@ const inputActionDuplex: DuplexerLookupTable<InputActionType, InputActionValueTy
 	[InputActionType.ExportBlueprint]: notImplementedDuplex,
 	[InputActionType.ImportBlueprint]: notImplementedDuplex,
 	[InputActionType.ImportBlueprintsFiltered]: notImplementedDuplex,
-	[InputActionType.PlayerJoinGame]: { read: readPlayerJoinGameData, write: writePlayerJoinGameData },
+	[InputActionType.PlayerJoinGame]: PlayerJoinGameData,
 	[InputActionType.PlayerAdminChange]: notImplementedDuplex,
 	[InputActionType.CancelDeconstruct]: notImplementedDuplex,
 	[InputActionType.CancelUpgrade]: notImplementedDuplex,
@@ -679,7 +761,7 @@ const inputActionDuplex: DuplexerLookupTable<InputActionType, InputActionValueTy
 	[InputActionType.SelectArea]: notImplementedDuplex,
 	[InputActionType.AltSelectArea]: notImplementedDuplex,
 	[InputActionType.ReverseSelectArea]: notImplementedDuplex,
-	[InputActionType.ServerCommand]: { read: readServerCommandData, write: writeServerCommandData },
+	[InputActionType.ServerCommand]: ServerCommandData,
 	[InputActionType.SetControllerLogisticTrashFilterItem]: notImplementedDuplex,
 	[InputActionType.SetEntityLogisticTrashFilterItem]: notImplementedDuplex,
 	[InputActionType.SetInfinityContainerFilterItem]: notImplementedDuplex,
@@ -704,7 +786,7 @@ const inputActionDuplex: DuplexerLookupTable<InputActionType, InputActionValueTy
 	[InputActionType.QuickBarSetSlot]: notImplementedDuplex,
 	[InputActionType.QuickBarPickSlot]: notImplementedDuplex,
 	[InputActionType.QuickBarSetSelectedPage]: notImplementedDuplex,
-	[InputActionType.PlayerLeaveGame]: { read: readUInt8, write: writeUInt8 },
+	[InputActionType.PlayerLeaveGame]: UInt8,
 	[InputActionType.MapEditorAction]: notImplementedDuplex,
 	[InputActionType.PutSpecialItemInMap]: notImplementedDuplex,
 	[InputActionType.PutSpecialRecordInMap]: notImplementedDuplex,
@@ -714,10 +796,10 @@ const inputActionDuplex: DuplexerLookupTable<InputActionType, InputActionValueTy
 	[InputActionType.TranslateString]: notImplementedDuplex,
 	[InputActionType.FlushOpenedEntitySpecificFluid]: notImplementedDuplex,
 	[InputActionType.ChangePickingState]: notImplementedDuplex,
-	[InputActionType.SelectedEntityChangedVeryClose]: { read: readUInt8, write: writeUInt8 },
-	[InputActionType.SelectedEntityChangedVeryClosePrecise]: { read: readUInt16, write: writeUInt16 },
-	[InputActionType.SelectedEntityChangedRelative]: { read: readUInt32, write: writeUInt32 },
-	[InputActionType.SelectedEntityChangedBasedOnUnitNumber]: { read: readUInt32, write: writeUInt32 },
+	[InputActionType.SelectedEntityChangedVeryClose]: UInt8,
+	[InputActionType.SelectedEntityChangedVeryClosePrecise]: UInt16,
+	[InputActionType.SelectedEntityChangedRelative]: UInt32,
+	[InputActionType.SelectedEntityChangedBasedOnUnitNumber]: UInt32,
 	[InputActionType.SetAutosortInventory]: notImplementedDuplex,
 	[InputActionType.SetFlatControllerGui]: notImplementedDuplex,
 	[InputActionType.SetRecipeNotifications]: notImplementedDuplex,
@@ -763,80 +845,6 @@ const inputActionDuplex: DuplexerLookupTable<InputActionType, InputActionValueTy
 	[InputActionType.SetLinkedContainerLinkID]: notImplementedDuplex,
 };
 
-export type CrcData = { crc: number, tickOfCrc: number };
-export function readCrcData(stream: Readable) {
-	return {
-		crc: readUInt32(stream),
-		tickOfCrc: readUInt32(stream),
-	};
-}
-export function writeCrcData(stream: Writable, data: CrcData) {
-	writeUInt32(stream, data.crc);
-	writeUInt32(stream, data.tickOfCrc);
-}
-
-export enum ShootingStateState {
-	NotShooting,
-	ShootingEnemies,
-	ShootingSelected,
-}
-export type ShootingState = { state: ShootingStateState, target: MapPosition };
-export function readShootingState(stream: Readable) {
-	return {
-		state: readUInt8(stream),
-		target: MapPosition.read(stream),
-	};
-}
-export function writeShootingState(stream: Writable, state: ShootingState) {
-	writeUInt8(stream, state.state);
-	MapPosition.write(stream, state.target);
-}
-
-export type PlayerJoinGameData = {
-	peerID: number,
-	playerIndex: number,
-	forceID: number,
-	username: string,
-	asEditor: boolean,
-	admin: boolean,
-}
-export function readPlayerJoinGameData(stream: Readable) {
-	return {
-		peerID: readSpaceOptimizedUInt16(stream),
-		playerIndex: readUInt16(stream),
-		forceID: readUInt8(stream),
-		username: readUtf8String(stream),
-		asEditor: readBool(stream),
-		admin: readBool(stream),
-	};
-}
-export function writePlayerJoinGameData(stream: Writable, data: PlayerJoinGameData) {
-	writeSpaceOptimizedUInt16(stream, data.peerID);
-	writeUInt16(stream, data.playerIndex);
-	writeUInt8(stream, data.forceID);
-	writeUtf8String(stream, data.username);
-	writeBool(stream, data.asEditor);
-	writeBool(stream, data.admin);
-}
-
-export type ServerCommandData = {
-	command: Buffer,
-	id: number,
-	connectionID: Buffer,
-}
-export function readServerCommandData(stream: Readable) {
-	return {
-		command: readString(stream),
-		id: readUInt32(stream),
-		connectionID: readBuffer(stream, 8),
-	};
-}
-export function writeServerCommandData(stream: Writable, data: ServerCommandData) {
-	writeString(stream, data.command);
-	writeUInt32(stream, data.id);
-	writeBuffer(stream, data.connectionID);
-}
-
 export class InputAction<T extends InputActionType = InputActionType> {
 	constructor(
 		public type: T,
@@ -848,12 +856,12 @@ export class InputAction<T extends InputActionType = InputActionType> {
 	) { }
 
 	static read(stream: Readable, lastPlayerIndex: number = 0) {
-		const type = readUInt8(stream);
+		const type = UInt8.read(stream);
 		return this.readPayload(stream, type, lastPlayerIndex);
 	}
 
 	static readPayload(stream: Readable, type: InputActionType, lastPlayerIndex: number = 0) {
-		const playerIndex = (readSpaceOptimizedUInt16(stream) + lastPlayerIndex) & 0xffff;
+		const playerIndex = (SpaceOptimizedUInt16.read(stream) + lastPlayerIndex) & 0xffff;
 
 		const duplex = inputActionDuplex[type];
 		if (duplex === notImplementedDuplex) {
@@ -871,14 +879,14 @@ export class InputAction<T extends InputActionType = InputActionType> {
 	}
 
 	static write(stream: Writable, input: InputAction, lastPlayerIndex: number) {
-		writeUInt8(stream, input.type);
+		UInt8.write(stream, input.type);
 		this.writePayload(stream, input, lastPlayerIndex);
 	}
 
 	static writePayload<T extends InputActionType>(
 		stream: Writable, input: InputAction<T>, lastPlayerIndex: number
 	) {
-		writeSpaceOptimizedUInt16(stream, input.playerIndex! - lastPlayerIndex & 0xffff);
+		SpaceOptimizedUInt16.write(stream, input.playerIndex! - lastPlayerIndex & 0xffff);
 		const duplex = inputActionDuplex[input.type];
 		if (duplex as unknown === notImplementedDuplex) {
 			throw new EncodeError(
@@ -904,21 +912,21 @@ export class InputActionSegment {
 
 	static read(stream: Readable) {
 		return new InputActionSegment(
-			readUInt8(stream),
-			readUInt32(stream),
-			readSpaceOptimizedUInt16(stream),
-			readSpaceOptimizedUInt32(stream),
-			readSpaceOptimizedUInt32(stream),
-			readString(stream),
+			UInt8.read(stream),
+			UInt32.read(stream),
+			SpaceOptimizedUInt16.read(stream),
+			SpaceOptimizedUInt32.read(stream),
+			SpaceOptimizedUInt32.read(stream),
+			StringT.read(stream),
 		);
 	}
 
 	static write(stream: Writable, segment: InputActionSegment) {
-		writeUInt8(stream, segment.type);
-		writeUInt32(stream, segment.id);
-		writeSpaceOptimizedUInt16(stream, segment.playerIndex);
-		writeSpaceOptimizedUInt32(stream, segment.totalSegments);
-		writeSpaceOptimizedUInt32(stream, segment.segmentNumber);
-		writeString(stream, segment.payload);
+		UInt8.write(stream, segment.type);
+		UInt32.write(stream, segment.id);
+		SpaceOptimizedUInt16.write(stream, segment.playerIndex);
+		SpaceOptimizedUInt32.write(stream, segment.totalSegments);
+		SpaceOptimizedUInt32.write(stream, segment.segmentNumber);
+		StringT.write(stream, segment.payload);
 	}
 }

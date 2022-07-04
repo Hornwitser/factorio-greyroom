@@ -1,7 +1,6 @@
 import {
-	Readable, DuplexerLookupTable, Writable,
-	readBool, readUInt8, readUInt16, readInt32, readUInt32, readDouble, readSpaceOptimizedUInt16, readUtf8String,
-	writeBool, writeUInt8, writeUInt16, writeInt32, writeUInt32, writeDouble, writeSpaceOptimizedUInt16, writeUtf8String,
+	Readable, Duplexer, DuplexerLookupTable, Writable,
+	Bool, UInt8, UInt16, Int32, UInt32, Double, SpaceOptimizedUInt16, Utf8String,
 } from "./stream";
 
 export class Version {
@@ -14,18 +13,18 @@ export class Version {
 
 	static read(stream: Readable) {
 		return new Version(
-			readUInt8(stream),
-			readUInt8(stream),
-			readUInt8(stream),
-			readUInt16(stream),
+			UInt8.read(stream),
+			UInt8.read(stream),
+			UInt8.read(stream),
+			UInt16.read(stream),
 		);
 	}
 
 	static write(stream: Writable, version: Version) {
-		writeUInt8(stream, version.major);
-		writeUInt8(stream, version.minor);
-		writeUInt8(stream, version.patch);
-		writeUInt16(stream, version.build);
+		UInt8.write(stream, version.major);
+		UInt8.write(stream, version.minor);
+		UInt8.write(stream, version.patch);
+		UInt16.write(stream, version.build);
 	}
 }
 
@@ -38,16 +37,16 @@ export class ModVersion {
 
 	static read(stream: Readable) {
 		return new ModVersion(
-			readSpaceOptimizedUInt16(stream),
-			readSpaceOptimizedUInt16(stream),
-			readSpaceOptimizedUInt16(stream),
+			SpaceOptimizedUInt16.read(stream),
+			SpaceOptimizedUInt16.read(stream),
+			SpaceOptimizedUInt16.read(stream),
 		);
 	}
 
 	static write(stream: Writable, version: ModVersion) {
-		writeSpaceOptimizedUInt16(stream, version.major);
-		writeSpaceOptimizedUInt16(stream, version.minor);
-		writeSpaceOptimizedUInt16(stream, version.sub);
+		SpaceOptimizedUInt16.write(stream, version.major);
+		SpaceOptimizedUInt16.write(stream, version.minor);
+		SpaceOptimizedUInt16.write(stream, version.sub);
 	}
 }
 
@@ -60,34 +59,57 @@ export class ModID {
 
 	static read(stream: Readable) {
 		return new ModID(
-			readUtf8String(stream),
+			Utf8String.read(stream),
 			ModVersion.read(stream),
-			readUInt32(stream),
+			UInt32.read(stream),
 		);
 	}
 
 	static write(stream: Writable, modID: ModID) {
-		writeUtf8String(stream, modID.name);
+		Utf8String.write(stream, modID.name);
 		ModVersion.write(stream, modID.version);
-		writeUInt32(stream, modID.crc);
+		UInt32.write(stream, modID.crc);
 	}
 }
 
-export function readImmutableString(stream: Readable) {
-	let empty = readBool(stream);
-	if (!empty) {
-		return readUtf8String(stream);
-	}
-	return "";
+export type ImmutableString = string;
+export const ImmutableString: Duplexer<ImmutableString> = {
+	read(stream: Readable) {
+		let empty = Bool.read(stream);
+		if (!empty) {
+			return Utf8String.read(stream);
+		}
+		return "";
+	},
+	write(stream: Writable, value: string) {
+		let empty = !value.length;
+		Bool.write(stream, empty);
+		if (!empty) {
+			Utf8String.write(stream, value);
+		}
+	},
 }
 
-export function writeImmutableString(stream: Writable, value: string) {
-	let empty = !value.length;
-	writeBool(stream, empty);
-	if (!empty) {
-		writeUtf8String(stream, value);
-	}
-}
+const PropertyTreeList = {
+	read(stream: Readable) {
+		let size = UInt32.read(stream);
+		let items = [];
+		for (let i = 0; i < size; i++) {
+			let key = ImmutableString.read(stream);
+			let item = PropertyTree.read(stream);
+			item.key = key;
+			items.push(item);
+		}
+		return items;
+	},
+	write(stream: Writable, items: PropertyTree<PropertyTreeType>[]) {
+		UInt32.write(stream, items.length);
+		for (let item of items) {
+			ImmutableString.write(stream, item.key);
+			PropertyTree.write(stream, item);
+		}
+	},
+};
 
 export enum PropertyTreeType {
 	None,
@@ -109,11 +131,11 @@ type PropertyTreeValueType = {
 
 const propertyTreeDuplex: DuplexerLookupTable<PropertyTreeType, PropertyTreeValueType> = {
 	[PropertyTreeType.None]: { read: () => undefined, write: () => {} },
-	[PropertyTreeType.Bool]: { read: readBool, write: writeBool },
-	[PropertyTreeType.Number]: { read: readDouble, write: writeDouble },
-	[PropertyTreeType.String]: { read: readImmutableString, write: writeImmutableString },
-	[PropertyTreeType.List]: { read: readPropertyTreeList, write: writePropertyTreeList },
-	[PropertyTreeType.Dictionary]: { read: readPropertyTreeList, write: writePropertyTreeList },
+	[PropertyTreeType.Bool]: Bool,
+	[PropertyTreeType.Number]: Double,
+	[PropertyTreeType.String]: ImmutableString,
+	[PropertyTreeType.List]: PropertyTreeList,
+	[PropertyTreeType.Dictionary]: PropertyTreeList,
 };
 
 export class PropertyTree<T extends PropertyTreeType = PropertyTreeType> {
@@ -125,39 +147,19 @@ export class PropertyTree<T extends PropertyTreeType = PropertyTreeType> {
 	) { }
 
 	static read(stream: Readable) {
-		const type: PropertyTreeType = readUInt8(stream);
+		const type: PropertyTreeType = UInt8.read(stream);
 
 		return new PropertyTree(
 			type,
-			readBool(stream),
+			Bool.read(stream),
 			propertyTreeDuplex[type].read(stream),
 		);
 	}
 
 	static write<T extends PropertyTreeType>(stream: Writable, tree: PropertyTree<T>) {
-		writeUInt8(stream, tree.type);
-		writeBool(stream, tree.anyTypeFlag);
+		UInt8.write(stream, tree.type);
+		Bool.write(stream, tree.anyTypeFlag);
 		propertyTreeDuplex[tree.type].write(stream, tree.value);
-	}
-}
-
-function readPropertyTreeList(stream: Readable) {
-	let size = readUInt32(stream);
-	let items = [];
-	for (let i = 0; i < size; i++) {
-		let key = readImmutableString(stream);
-		let item = PropertyTree.read(stream);
-		item.key = key;
-		items.push(item);
-	}
-	return items;
-}
-
-function writePropertyTreeList(stream: Writable, items: PropertyTree<PropertyTreeType>[]) {
-	writeUInt32(stream, items.length);
-	for (let item of items) {
-		writeImmutableString(stream, item.key);
-		PropertyTree.write(stream, item);
 	}
 }
 
@@ -180,7 +182,7 @@ export class Direction {
 	) { }
 
 	static read(stream: Readable) {
-		const readValue = readUInt8(stream);
+		const readValue = UInt8.read(stream);
 		let targetValue = DirectionEnum.None;
 		if (readValue > 15) {
 			targetValue = (readValue >> 4) - 1;
@@ -196,7 +198,7 @@ export class Direction {
 		if (direction.targetValue !== DirectionEnum.None) {
 			value += ((direction.targetValue + 1) << 4);
 		}
-		writeUInt8(stream, value);
+		UInt8.write(stream, value);
 	}
 }
 
@@ -208,14 +210,14 @@ export class MapPosition {
 
 	static read(stream: Readable) {
 		return new MapPosition(
-			readInt32(stream) / 256,
-			readInt32(stream) / 256,
+			Int32.read(stream) / 256,
+			Int32.read(stream) / 256,
 		);
 	}
 
 	static write(stream: Writable, pos: MapPosition) {
-		writeInt32(stream, pos.x * 256);
-		writeInt32(stream, pos.y * 256);
+		Int32.write(stream, pos.x * 256);
+		Int32.write(stream, pos.y * 256);
 	}
 }
 
@@ -233,14 +235,18 @@ export enum DisconnectReason {
 	Banned,
 	SwitchingServers,
 }
-
-
-export type SmallProgress = number | null;
-export function readSmallProgress(stream: Readable): SmallProgress {
-	const value = readUInt8(stream);
-	return value === 255 ? null : value / 254;
+export namespace DisconnectReason {
+	export const read = UInt8.read;
+	export const write = UInt8.write;
 }
 
-export function writeSmallProgress(stream: Writable, progress: SmallProgress) {
-	writeUInt8(stream, progress === null ? 255 : Math.floor(progress * 254));
+export type SmallProgress = number | null;
+export const SmallProgress: Duplexer<SmallProgress> = {
+	read(stream: Readable): SmallProgress {
+		const value = UInt8.read(stream);
+		return value === 255 ? null : value / 254;
+	},
+	write(stream: Writable, progress: SmallProgress) {
+		UInt8.write(stream, progress === null ? 255 : Math.floor(progress * 254));
+	},
 }
