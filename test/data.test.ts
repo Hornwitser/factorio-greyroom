@@ -1,5 +1,4 @@
-import { PropertyTree, PropertyTreeType } from "../src/data";
-import { ReadableStream, Duplexer, WritableStream } from "../src/stream";
+import { Duplexer, PropertyTree, PropertyTreeType, ReadableStream, WritableStream } from "../src";
 
 function checkRoundtrip<T>(
 	input: T,

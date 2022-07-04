@@ -8,9 +8,7 @@ import * as libConfig from "@clusterio/lib/config";
 import { ConsoleTransport, logger } from "@clusterio/lib/logging";
 import * as libLoggingUtils from "@clusterio/lib/logging_utils";
 
-import { InputActionType } from "../src/input";
-import { NetworkMessageType } from "../src/network_message";
-import UdpClient from "../src/UdpClient";
+import { InputActionType, NetworkMessageType, UdpClient } from "../src";
 
 import ServerInterface from "./ServerInterface";
 import spawn from "./spawn";
