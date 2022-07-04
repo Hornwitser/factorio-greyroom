@@ -591,7 +591,7 @@ export type InputActionValueType = {
 	[InputActionType.SetLinkedContainerLinkID]: NotImplemented,
 };
 
-const inputActionDuplex: DuplexerLookupTable<InputActionType, InputActionValueType> = {
+export const InputActionValueType: DuplexerLookupTable<InputActionType, InputActionValueType> = {
 	[InputActionType.Nothing]: Empty,
 	[InputActionType.StopWalking]: Empty,
 	[InputActionType.BeginMining]: Empty,
@@ -859,8 +859,8 @@ export class InputAction<T extends InputActionType = InputActionType> {
 	static readPayload(stream: Readable, type: InputActionType, lastPlayerIndex: number = 0) {
 		const playerIndex = (SpaceOptimizedUInt16.read(stream) + lastPlayerIndex) & 0xffff;
 
-		const duplex = inputActionDuplex[type];
-		if (duplex === NotImplemented) {
+		const Type = InputActionValueType[type];
+		if (Type === NotImplemented) {
 			throw new DecodeError(
 				`Unknown input action ${InputActionType[type]} (${type})`,
 				{ stream, inputActionType: type },
@@ -869,7 +869,7 @@ export class InputAction<T extends InputActionType = InputActionType> {
 
 		return new InputAction(
 			type,
-			duplex.read(stream),
+			Type.read(stream),
 			playerIndex,
 		);
 	}
@@ -883,15 +883,15 @@ export class InputAction<T extends InputActionType = InputActionType> {
 		stream: Writable, input: InputAction<T>, lastPlayerIndex: number
 	) {
 		SpaceOptimizedUInt16.write(stream, input.playerIndex! - lastPlayerIndex & 0xffff);
-		const duplex = inputActionDuplex[input.type];
-		if (duplex as unknown === NotImplemented) {
+		const Type = InputActionValueType[input.type];
+		if (Type as unknown === NotImplemented) {
 			throw new EncodeError(
 				`Unknown input action ${InputActionType[input.type]} (${input.type})`,
 				{ stream, target: input },
 			);
 		}
 
-		duplex.write(stream, input.data);
+		Type.write(stream, input.data);
 	}
 }
 

@@ -131,7 +131,7 @@ type PropertyTreeValueType = {
 	[PropertyTreeType.Dictionary]: PropertyTree<PropertyTreeType>[],
 }
 
-const propertyTreeDuplex: DuplexerLookupTable<PropertyTreeType, PropertyTreeValueType> = {
+const PropertyTreeValueType: DuplexerLookupTable<PropertyTreeType, PropertyTreeValueType> = {
 	[PropertyTreeType.None]: { read: () => undefined, write: () => {} },
 	[PropertyTreeType.Bool]: Bool,
 	[PropertyTreeType.Number]: Double,
@@ -154,14 +154,14 @@ export class PropertyTree<T extends PropertyTreeType = PropertyTreeType> {
 		return new PropertyTree(
 			type,
 			Bool.read(stream),
-			propertyTreeDuplex[type].read(stream),
+			PropertyTreeValueType[type].read(stream),
 		);
 	}
 
 	static write<T extends PropertyTreeType>(stream: Writable, tree: PropertyTree<T>) {
 		UInt8.write(stream, tree.type);
 		Bool.write(stream, tree.anyTypeFlag);
-		propertyTreeDuplex[tree.type].write(stream, tree.value);
+		PropertyTreeValueType[tree.type].write(stream, tree.value);
 	}
 }
 
