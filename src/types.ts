@@ -1,6 +1,15 @@
 import { Readable, Reader, DecodeError, Duplexer, Writable, Writer } from "./stream";
 
 
+export type Empty = undefined;
+export const Empty: Duplexer<Empty> = { read: () => undefined, write: () => {} };
+
+export type NotImplemented = never;
+export const NotImplemented: Duplexer<NotImplemented> = {
+	read: () => { throw new Error("Not implemented"); },
+	write: () => { throw new Error("Not implemented"); },
+};
+
 export type Bool = boolean;
 export const Bool: Duplexer<Bool> = {
 	read(stream: Readable) {
