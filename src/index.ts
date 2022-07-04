@@ -1,4 +1,5 @@
 export * from "./stream";
+export * from "./types";
 export * from "./data";
 export * from "./input";
 export * from "./synchronizer_action";

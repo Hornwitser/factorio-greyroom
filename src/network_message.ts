@@ -1,8 +1,10 @@
 import {
 	Readable, Writable, Duplexer,
+} from "./stream";
+import {
 	UInt8, UInt16, UInt32, SpaceOptimizedUInt16, SpaceOptimizedUInt32,
 	BufferT, Utf8String, ArrayT, MapT,
-} from "./stream";
+} from "./types";
 import { InputAction, InputActionSegment } from "./input";
 import { Version, ModID, PropertyTree, SmallProgress } from "./data";
 import { SynchronizerAction, readSynchronizerAction, writeSynchronizerAction } from "./synchronizer_action";

@@ -1,8 +1,10 @@
 import {
 	DecodeError, Readable, EncodeError, Duplexer, DuplexerLookupTable, Writable,
+} from "./stream";
+import {
 	Bool, UInt8, UInt16, UInt32, BufferT,
 	SpaceOptimizedUInt16, SpaceOptimizedUInt32, StringT, Utf8String,
-} from "./stream";
+} from "./types";
 import { Direction, MapPosition, DisconnectReason } from "./data";
 
 

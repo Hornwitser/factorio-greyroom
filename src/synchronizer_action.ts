@@ -1,7 +1,9 @@
 import {
 	DecodeError, Readable, EncodeError, Writable, Duplexer,
-	Bool, UInt8, UInt16, UInt32, Utf8String, ArrayT, MapT,
 } from "./stream";
+import {
+	Bool, UInt8, UInt16, UInt32, Utf8String, ArrayT, MapT,
+} from "./types";
 import { DisconnectReason, SmallProgress } from "./data";
 
 

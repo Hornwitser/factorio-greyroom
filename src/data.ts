@@ -1,7 +1,9 @@
 import {
 	Readable, Duplexer, DuplexerLookupTable, Writable,
-	Bool, UInt8, UInt16, Int32, UInt32, Double, SpaceOptimizedUInt16, Utf8String,
 } from "./stream";
+import {
+	Bool, UInt8, UInt16, Int32, UInt32, Double, SpaceOptimizedUInt16, Utf8String,
+} from "./types";
 
 export class Version {
 	constructor(

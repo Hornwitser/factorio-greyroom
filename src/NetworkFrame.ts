@@ -1,8 +1,10 @@
 import { NetworkMessageType } from "./network_message";
 import {
 	Readable, Writable,
-	UInt8, UInt16, BufferT,
 } from "./stream";
+import {
+	UInt8, UInt16, BufferT,
+} from "./types";
 
 
 const alwaysHasMessageIdTypes = new Map([
