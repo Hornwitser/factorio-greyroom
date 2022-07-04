@@ -63,6 +63,7 @@ export type Writer<T> = (stream: Writable, value: T) => void;
 export interface Duplexer<T> {
 	read(stream: Readable): T,
 	write(stream: Writable, value: T): void,
+	repr?(value: T): string,
 }
 
 export type DuplexerLookupTable<Enum extends number, ValueType extends Record<Enum, any>> = {

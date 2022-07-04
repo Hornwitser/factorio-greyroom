@@ -8,7 +8,7 @@ import * as libConfig from "@clusterio/lib/config";
 import { ConsoleTransport, logger } from "@clusterio/lib/logging";
 import * as libLoggingUtils from "@clusterio/lib/logging_utils";
 
-import { InputActionType, NetworkMessageType, UdpClient } from "../src";
+import { InputAction, NetworkMessageType, UdpClient } from "../src";
 
 import ServerInterface from "./ServerInterface";
 import spawn from "./spawn";
@@ -178,8 +178,7 @@ async function main() {
 				firstTick = tickClosure.updateTick;
 			}
 			for (let inputAction of tickClosure.inputActions) {
-				let data = JSON.stringify(inputAction.data);
-				let action = `new InputAction(InputActionType.${InputActionType[inputAction.type]}, ${data})`;
+				let action = InputAction.repr(inputAction);
 				console.log(`client.sendInTickClosure(offset + ${tickClosure.updateTick - firstTick}, ${action});`);
 			}
 		}

@@ -3,6 +3,7 @@ import {
 } from "./stream";
 import {
 	Bool, UInt8, UInt16, Int32, UInt32, Double, SpaceOptimizedUInt16, Utf8String,
+	reprEnum,
 } from "./types";
 
 export class Version {
@@ -176,6 +177,11 @@ export enum DirectionEnum {
 	NorthWest,
 	None,
 }
+export namespace DirectionEnum {
+	export const read = UInt8.read;
+	export const write = UInt8.write;
+	export const repr = reprEnum(DirectionEnum);
+}
 
 export class Direction {
 	constructor(
@@ -202,6 +208,10 @@ export class Direction {
 		}
 		UInt8.write(stream, value);
 	}
+
+	static repr(direction: Direction) {
+		return `new Direction(${DirectionEnum.repr(direction.value)}, ${DirectionEnum.repr(direction.targetValue)})`;
+	}
 }
 
 export class MapPosition {
@@ -220,6 +230,10 @@ export class MapPosition {
 	static write(stream: Writable, pos: MapPosition) {
 		Int32.write(stream, pos.x * 256);
 		Int32.write(stream, pos.y * 256);
+	}
+
+	static repr(value: MapPosition) {
+		return `new MapPosition(${value.x}, ${value.y})`;
 	}
 }
 
@@ -240,6 +254,7 @@ export enum DisconnectReason {
 export namespace DisconnectReason {
 	export const read = UInt8.read;
 	export const write = UInt8.write;
+	export const repr = reprEnum(DisconnectReason);
 }
 
 export type SmallProgress = number | null;

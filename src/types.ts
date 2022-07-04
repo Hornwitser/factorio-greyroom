@@ -244,3 +244,10 @@ export const MapT = {
 	},
 };
 
+export function reprEnum(Enum: Record<number, string>) {
+	return function(value: number) {
+		let name = Enum[value];
+		if (name === undefined) { return `${value}`; }
+		return name;
+	}
+}

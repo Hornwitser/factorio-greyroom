@@ -4,6 +4,7 @@ import {
 import {
 	Empty, NotImplemented, Bool, UInt8, UInt16, UInt32, BufferT,
 	SpaceOptimizedUInt16, SpaceOptimizedUInt32, StringT, Utf8String,
+	reprEnum,
 } from "./types";
 import { Direction, MapPosition, DisconnectReason } from "./data";
 
@@ -27,17 +28,25 @@ export enum ShootingStateState {
 	ShootingEnemies,
 	ShootingSelected,
 }
+export namespace ShootingStateState {
+	export const read = UInt8.read;
+	export const write = UInt8.write;
+	export const repr = reprEnum(ShootingStateState);
+}
 export type ShootingState = { state: ShootingStateState, target: MapPosition };
 export const ShootingState: Duplexer<ShootingState> = {
 	read(stream: Readable) {
 		return {
-			state: UInt8.read(stream),
+			state: ShootingStateState.read(stream),
 			target: MapPosition.read(stream),
 		};
 	},
 	write(stream: Writable, state: ShootingState) {
-		UInt8.write(stream, state.state);
+		ShootingStateState.write(stream, state.state);
 		MapPosition.write(stream, state.target);
+	},
+	repr(value: ShootingState) {
+		return `{ state: ${ShootingStateState.repr(value.state)}, target: ${MapPosition.repr(value.target)} }`;
 	},
 };
 
@@ -892,6 +901,12 @@ export class InputAction<T extends InputActionType = InputActionType> {
 		}
 
 		Type.write(stream, input.data);
+	}
+
+	static repr<T extends InputActionType>(input: InputAction<T>) {
+		let repr = InputActionValueType[input.type].repr;
+		let data = repr ? repr(input.data) : JSON.stringify(input.data);
+		return `new InputAction(InputActionType.${InputActionType[input.type]}, ${data})`;
 	}
 }
 
