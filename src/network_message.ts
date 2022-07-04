@@ -532,15 +532,15 @@ export class TransferBlock implements AbstractNetworkMessage {
 }
 
 
-export class Empty implements AbstractNetworkMessage {
+export class EmptyMessage implements AbstractNetworkMessage {
 	readonly type = NetworkMessageType.Empty;
 
 	static read(stream: Readable) {
 		void stream;
-		return new Empty();
+		return new EmptyMessage();
 	}
 
-	static write(stream: Writable, message: Empty) {
+	static write(stream: Writable, message: EmptyMessage) {
 		void stream, message;
 	}
 }
@@ -554,7 +554,7 @@ export type NetworkMessage =
 	ServerToClientHeartbeat |
 	TransferBlockRequest |
 	TransferBlock |
-	Empty
+	EmptyMessage
 ;
 
 export const NetworkMessageTypeToClass = new Map<NetworkMessageType, Duplexer<NetworkMessage>>([
@@ -576,5 +576,5 @@ export const NetworkMessageTypeToClass = new Map<NetworkMessageType, Duplexer<Ne
 	// [NetworkMessageType.LANBroadcast, ...],
 	// [NetworkMessageType.GameInformationRequest, ...],
 	// [NetworkMessageType.GameInformationRequestReply, ...],
-	[NetworkMessageType.Empty, Empty],
+	[NetworkMessageType.Empty, EmptyMessage],
 ]);
